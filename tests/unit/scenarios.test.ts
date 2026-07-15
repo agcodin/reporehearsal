@@ -39,6 +39,17 @@ export function normalizeProvider(payload: unknown) {
     expect(evaluate("provider-schema-drift-v1", "src/services/provider-client.ts", "return payload.status.toUpperCase()").passed).toBe(false);
   });
 
+  it("passes and fails the webhook replay scenario deterministically", () => {
+    const safe = `export async function handleWebhook(event: ProviderEvent, signature: string) {
+  verifyWebhook(signature, event);
+  const existing = await prisma.charge.findUnique({ where: { providerEventId: event.id } });
+  if (existing) return existing;
+  return prisma.charge.create({ data: { providerEventId: event.id, amount: event.amount } });
+}`;
+    expect(evaluate("webhook-replay-idempotency-v1", "src/services/webhook-handler.ts", safe).passed).toBe(true);
+    expect(evaluate("webhook-replay-idempotency-v1", "src/services/webhook-handler.ts", "return prisma.charge.create({ data: { providerEventId: event.id } })").passed).toBe(false);
+  });
+
   it("applies coaching penalties without changing the repair outcome", () => {
     const scenario = scenarioFor("db-required-field-migration-v1");
     const files = [{ path: scenario.targetPath, content: safeBillingSource }];

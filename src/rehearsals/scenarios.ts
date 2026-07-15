@@ -15,6 +15,7 @@ function file(files:WorkspaceFile[],path:string){return files.find(item=>item.pa
 const databaseTemplate=incidents.find(item=>item.id==="db-required-field-migration-v1")!;
 const configurationTemplate=incidents.find(item=>item.id==="container-host-config-v1")!;
 const providerTemplate=incidents.find(item=>item.id==="provider-schema-drift-v1")!;
+const webhookTemplate=incidents.find(item=>item.id==="webhook-replay-idempotency-v1")!;
 
 export const scenarios: Record<string,Scenario> = {
   [databaseTemplate.id]: { template:databaseTemplate,targetPath:"src/services/billing.ts",injectedSource:injectedBillingSource,
@@ -33,6 +34,19 @@ export function normalizeProvider(payload: ProviderPayload) {
 export function normalizeProvider(payload: ProviderPayload) {
   return { status: payload.status!.toUpperCase() };
 }`),evaluate(files,hints){const source=file(files,"src/services/provider-client.ts");const renamed=/subscription_status/.test(source)&&/(?:\?\?|\|\|)/.test(source);const validation=/safeParse|typeof\s+.*===\s*["']string["']|z\.object/.test(source);const partial=/unknown|optional|undefined|missing|fallback/i.test(source);const unsafe=/as\s+any|@ts-ignore|always return success/i.test(source);return result([{name:"Renamed provider field",status:renamed?"passed":"failed",detail:renamed?"Both provider field versions are handled.":"The renamed field is still ignored."},{name:"Runtime payload validation",status:validation?"passed":"failed",hidden:true,detail:validation?"Untrusted provider data is validated.":"The provider payload is still trusted without validation."},{name:"Partial response handling",status:partial?"passed":"failed",hidden:true,detail:partial?"Missing values have an explicit safe path.":"Partial responses remain crash-prone."},{name:"Unsafe suppression scan",status:unsafe?"failed":"passed",hidden:true,detail:unsafe?"A type-safety suppression or blanket success was detected.":"No blanket suppression detected."}],hints)} },
+  [webhookTemplate.id]: { template:webhookTemplate,targetPath:"src/services/webhook-handler.ts",injectedSource:`export async function handleWebhook(event: ProviderEvent, signature: string) {
+  verifyWebhook(signature, event);
+  return prisma.charge.create({
+    data: { providerEventId: event.id, amount: event.amount, customerId: event.customerId },
+  });
+}`,
+    logs:["18:22:04 WARN payment-webhook delivery replay event_id=evt_94f2 attempt=2","18:22:04 ERROR reconciliation duplicate provider_event_id=evt_94f2 charges=ch_801,ch_802"],databaseEvidence:["evt_94f2 | ch_801 | 4200 | delivered 18:20","evt_94f2 | ch_802 | 4200 | replayed 18:22","evt_95a1 | ch_803 | 1900 | delivered 18:23"],healthEvidence:["payment-webhook DEGRADED duplicate-event rate 3.8%","checkout HEALTHY","provider signature verification HEALTHY"],
+    prepare:files=>overlay(files,"src/services/webhook-handler.ts",`export async function handleWebhook(event: ProviderEvent, signature: string) {
+  verifyWebhook(signature, event);
+  return prisma.charge.create({
+    data: { providerEventId: event.id, amount: event.amount, customerId: event.customerId },
+  });
+}`),evaluate(files,hints){const source=file(files,"src/services/webhook-handler.ts");const lookup=/findUnique|upsert|findFirst/.test(source)&&/providerEventId/.test(source);const shortCircuit=/if\s*\([^)]*(?:existing|duplicate|charge)[^)]*\)\s*(?:\{|return)/i.test(source);const verification=/verifyWebhook|verifySignature|signature/i.test(source);const unsafe=/always return success|@ts-ignore|catch\s*\([^)]*\)\s*\{\s*\}/i.test(source);return result([{name:"Replay idempotency boundary",status:lookup?"passed":"failed",detail:lookup?"A provider event ID is checked before another charge is created.":"The handler still creates a charge for every delivery."},{name:"Duplicate delivery short-circuit",status:shortCircuit?"passed":"failed",hidden:true,detail:shortCircuit?"Known deliveries exit without another mutation.":"A duplicate delivery can still create a second charge."},{name:"Signature verification",status:verification?"passed":"failed",hidden:true,detail:verification?"Verification remains before persistence.":"The provider signature boundary was removed."},{name:"Unsafe shortcut scan",status:unsafe?"failed":"passed",hidden:true,detail:unsafe?"A blanket suppression was detected.":"No blanket suppression detected."}],hints)} },
 };
 
 export function scenarioFor(id:string):Scenario{const scenario=scenarios[id];if(!scenario)throw new Error("Incident template not found");return scenario}

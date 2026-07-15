@@ -53,6 +53,12 @@ export const incidents: IncidentTemplate[] = [
     briefing: { title: "Payment status sync crashes", severity: "SEV-3", customerReport: "Some subscription refreshes return an error.", initialAlert: "provider payload validation failed", knownImpact: ["Subscription refresh"], unaffectedSystems: ["Account login", "Invoices"] },
     intendedRootCause: "The client assumes a renamed provider response field exists without validation.", hints: ["Inspect the provider boundary.", "Compare payloads.", "Validate external data before use.", "Handle timeout and partial responses explicitly."],
   },
+  {
+    id: "webhook-replay-idempotency-v1", version: 1, name: "Webhook replay duplicates charges", category: "external_dependency", difficulty: "advanced", available: true,
+    summary: "Stop a payment-provider retry from creating a second charge while preserving signature verification.",
+    briefing: { title: "Duplicate charges after a webhook retry", severity: "SEV-1", customerReport: "A small group of customers received duplicate charges after the provider retried delayed webhook deliveries.", initialAlert: "charge-created events exceed unique provider event IDs", knownImpact: ["Payment charges", "Customer trust", "Reconciliation queue"], unaffectedSystems: ["Checkout creation", "Account login"] },
+    intendedRootCause: "The webhook handler persists every delivery without an idempotency lookup, so a valid retry is treated as a new charge.", hints: ["Compare provider event IDs for duplicate charges.", "Find where a webhook delivery becomes a persisted charge.", "Use the provider event ID as an idempotency boundary.", "Keep signature verification before any database mutation and safely short-circuit duplicates."],
+  },
 ];
 
 export const injectedBillingSource = `export function serializeBilling(profile: BillingProfile) {
