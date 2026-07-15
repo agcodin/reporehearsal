@@ -1,0 +1,2 @@
+import { describe,expect,it } from "vitest"; import { transitionStatus } from "../../src/sandbox/sandbox-service";
+describe("session state machine",()=>{it("allows the rehearsal lifecycle",()=>{expect(transitionStatus("PREPARING","READY")).toBe("READY");expect(transitionStatus("READY","ACTIVE")).toBe("ACTIVE");expect(transitionStatus("ACTIVE","VALIDATING")).toBe("VALIDATING")});it("rejects invalid jumps",()=>expect(()=>transitionStatus("PREPARING","COMPLETED")).toThrow(/Invalid/))});

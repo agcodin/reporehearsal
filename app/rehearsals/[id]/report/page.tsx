@@ -1,0 +1,1 @@
+import { Suspense } from "react"; import Report from "./Report"; export default function ReportPage(){return <Suspense fallback={<main className="app-page"><p>Generating report…</p></main>}><Report/></Suspense>}

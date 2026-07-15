@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server"; import { z } from "zod"; import { commandFor } from "../../../../../src/sandbox/command-policy";
+const bodySchema=z.object({commandId:z.string()});
+export async function POST(request:Request){const parsed=bodySchema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:{code:"INVALID_REQUEST",message:"A commandId is required"}},{status:400});try{const command=commandFor(parsed.data.commandId);return NextResponse.json({commandId:parsed.data.commandId,approved:true,argv:command,exitCode:0})}catch{return NextResponse.json({error:{code:"COMMAND_REJECTED",message:"That command is not approved for this rehearsal."}},{status:403})}}
