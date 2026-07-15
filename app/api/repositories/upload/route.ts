@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
 import { analyzeUploadedFiles, extractZipUpload, MAX_UPLOAD_BYTES, RepositoryUploadError, validateFolderUpload, type UploadedFile } from "../../../../src/repositories/upload/analyzer";
+import { saveRepository } from "../../../../src/repositories/repository-service";
+import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
 
 export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
+    await consumeRateLimit(request, "repository-upload", 10, 3_600);
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > MAX_UPLOAD_BYTES + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", "The upload exceeds the 20 MB limit.", 413);
     const form = await request.formData();
@@ -30,9 +33,13 @@ export async function POST(request: Request) {
     }
     const repository = analyzeUploadedFiles(name, files, sourceFileCount);
     const user = await getChatGPTUser();
+    const decoder = new TextDecoder("utf-8", { fatal: true }); const workspaceFiles: { path: string; content: string }[] = [];
+    for (const file of files) { try { workspaceFiles.push({ path: file.path, content: decoder.decode(file.bytes) }); } catch { /* Invalid text files remain excluded. */ } }
+    const stored = await saveRepository(user ? { email: user.email, displayName: user.displayName } : null, { id: repository.id, source: "UPLOAD", externalRef: null, name: repository.name, analysis: repository as unknown as Record<string, unknown>, files: workspaceFiles });
     if (user) await saveAccountRepository(user.email, user.displayName, { id: repository.id, source: "UPLOAD", externalId: null, name: repository.name, displayRef: `${repository.fileCount} local files`, ...repository.stack, fileCount: repository.fileCount });
-    return NextResponse.json({ repository, savedToAccount: Boolean(user), sourceModified: false, correlationId });
+    return NextResponse.json({ repository, accessToken: stored.accessToken, savedToAccount: Boolean(user), sourceModified: false, correlationId });
   } catch (error) {
+    if (error instanceof RateLimitError) return NextResponse.json({ error: { code: "RATE_LIMITED", message: error.message, correlationId } }, { status: 429, headers: { "Retry-After": String(error.retryAfter) } });
     if (error instanceof RepositoryUploadError) return NextResponse.json({ error: { code: error.code, message: error.message, correlationId } }, { status: error.status });
     console.error("Repository upload failed", { correlationId, error: error instanceof Error ? error.message : "unknown" });
     return NextResponse.json({ error: { code: "UPLOAD_FAILED", message: "The codebase could not be analyzed safely.", correlationId } }, { status: 500 });

@@ -1,39 +1,33 @@
 # Security model
 
-## Isolation
+## Isolation and authorization
 
-Every session works on a copied repository with a unique ID and maximum lifetime. Production containers must run without privilege, host mounts, or Docker socket access; outbound networking is denied, and CPU/memory limits are mandatory. The local demo adapter preserves path, command, expiry, event, and validation boundaries without presenting itself as a public arbitrary-code sandbox.
+Every imported repository is an immutable, filtered R2 snapshot. Every rehearsal receives a new working-copy object and a unique 32-byte access token. Only a matching token hash or the owning ChatGPT account can access it. Active sessions expire at the selected time limit; completed and expired working copies are deleted.
+
+The Sites worker uses a curated virtual command adapter: approved command IDs produce deterministic scenario checks and evidence. It never executes uploaded shell code, installs dependencies, follows repository instructions, or exposes a Docker socket. Arbitrary execution belongs on a separately patched and quota-controlled sandbox host.
 
 ## Authentication and account data
 
-Public product and repository-intake routes do not require an account. Protected pages and account APIs use dispatch-owned Sign in with ChatGPT. Identity is read from trusted forwarded headers on the server; client-supplied email or account IDs are never accepted for authorization. Passwords and provider tokens are not handled by RepoRehearsal. D1 rows are owned through the authenticated email-derived account, and writes use prepared statements. Profiles retain identity, preferences, rehearsal result summaries, and repository analysis metadata only.
+Public product, intake, and rehearsal routes do not require an account. ChatGPT identity is read from trusted hosting headers; client-supplied email/account IDs are never authorization inputs. Account-owned snapshots persist for reuse. Anonymous snapshots expire after 24 hours. The repository DELETE API removes the R2 object and matching metadata.
 
-## Upload safety
+Google and GitHub OAuth buttons are not fabricated because Sites currently supplies only ChatGPT sign-in. Public GitHub imports are authorized by repository URL plus the returned opaque session token.
 
-Folder and ZIP uploads are limited to 20 MB expanded, 3,000 files, and 1 MB per analyzed text file. Absolute paths, parent traversal, and null bytes are rejected. Environment files, keys, credential files, generated directories, nested archives, binaries, and unsupported file types are excluded. ZIP data is decoded in memory for deterministic analysis and is never extracted into the worker filesystem, so archive links cannot be followed. Only non-content repository metadata is attached to a signed-in account.
+## Upload and GitHub safety
 
-Public GitHub import accepts only canonical `https://github.com/owner/repository` URLs, uses fixed `api.github.com` endpoints derived from validated owner/repository segments, limits size and file count, and rejects private repositories, truncated trees, symlinks, and submodules. Only the tree and root package metadata are retrieved; the importer never writes to GitHub.
+Folder and ZIP uploads are limited to 20 MB expanded, 3,000 files, and 1 MB per analyzed text file. Absolute paths, traversal, null bytes, symlinks, nested archives, generated directories, environment files, keys, credentials, binaries, and unsupported types are rejected or excluded.
 
-## Command execution
+GitHub import accepts canonical `https://github.com/owner/repository` roots, validates public metadata, and downloads a bounded archive only from a derived `codeload.github.com` URL. Private repositories, truncated trees, symlinks, submodules, excessive files, and oversized payloads fail closed. Source repositories are never written.
 
-The client sends approved command IDs such as `run-tests`, never shell text. The server maps each ID to a fixed argv array, uses timeouts, limits output, records a safe summary, and rejects chaining, package installation, outbound tools, destructive database operations, and unknown commands.
+## Commands, AI, and hidden validation
 
-## Secrets and logs
+The browser sends fixed command IDs; unknown IDs receive 403. File paths are normalized and content updates are bounded. Repository text is never included in the report-enhancement prompt. The OpenAI request contains deterministic check summaries, the intended root cause, safe event summaries, and user hypotheses. Structured output is schema-validated and cannot change score, outcome, checks, or root cause.
 
-`.env` files are excluded. API keys, connection strings, bearer tokens, and session secrets are redacted. User-visible errors contain a correlation ID instead of internal stack traces. Events store action categories and minimal safe payloads.
+Hidden checks cover the secondary behavior, legacy state, unsafe shortcuts, and category-specific invariants. Their source remains server-side.
 
-## AI prompt injection
+## Abuse prevention and lifecycle
 
-Repository text is untrusted quoted data. Prompts explicitly prohibit following repository instructions. Only narrow excerpts and deterministic metadata are provided; hidden test source, host credentials, system prompts, and unrelated repository content are never included. Model responses are schema-validated and advisory.
+Rehearsal requests are limited to 120 per minute per Cloudflare client fingerprint. GitHub imports and uploads are limited to 10 per hour. Expired resources are deleted opportunistically and through `POST /api/internal/cleanup`, protected by `CLEANUP_SECRET`. Cleanup is bounded to 100 items per resource type per call and is safe to schedule repeatedly.
 
-## Hidden validation
+## Residual risks
 
-Hidden test source lives outside the exercise workspace. The evaluator combines behavioral tests and static checks for deleted tests, hardcoded sample accounts, blanket catches, fake success responses, removed constraints, and globally disabled validation.
-
-## Lifecycle and rate limits
-
-Preparation, command execution, hints, and submission are rate-limited per user/session. Expired workspaces reject new actions and are deleted by an idempotent cleanup job. Uploaded archives and derived data follow the same expiry policy.
-
-## Threats requiring hardened hosting
-
-Container breakout, kernel vulnerabilities, denial of service, archive bombs, and cross-tenant data access require a dedicated sandbox host with patched runtimes, network policy, quotas, audit logs, and separate storage—not a general web worker.
+The worker does not eliminate risks in a future arbitrary-code executor. Container breakout, kernel vulnerabilities, resource exhaustion, dependency attacks, and cross-tenant leakage require a dedicated sandbox plane with network denial, resource quotas, short-lived credentials, audit logs, and rapid patching.

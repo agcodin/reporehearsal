@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { isSafeArchiveEntry } from "../../security/path-validation";
+import { extractZipUpload, MAX_UPLOAD_BYTES } from "../upload/analyzer";
+import type { WorkspaceFile } from "../../rehearsals/types";
 
 const MAX_REPOSITORY_KB = 20 * 1024;
 const MAX_FILES = 3_000;
@@ -113,4 +115,25 @@ export async function importPublicGitHubRepository(value: string, options: { fet
     compatibleIncidentIds, detectedFiles: paths.filter(path => /(?:package\.json|schema\.prisma|docker-compose|Dockerfile|\.test\.[jt]sx?$|migration\.sql$)/.test(path)).slice(0, 20),
     warnings: repository.fork ? ["This repository is a fork; analysis uses its current default branch."] : [],
   };
+}
+
+export async function downloadPublicGitHubSource(value: string, branch: string, options: { fetcher?: Fetcher } = {}): Promise<WorkspaceFile[]> {
+  const ref = parseGitHubRepositoryUrl(value); const fetcher = options.fetcher ?? fetch;
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetcher(`https://codeload.github.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repository)}/zip/${encodeURIComponent(branch)}`, { signal: controller.signal, headers: { "User-Agent": "RepoRehearsal/1.0" } });
+    if (!response.ok) throw new GitHubImportError("SOURCE_UNAVAILABLE", "GitHub source could not be downloaded for the rehearsal.", 502);
+    const declaredSize = Number(response.headers.get("content-length") ?? 0);
+    if (declaredSize > MAX_UPLOAD_BYTES) throw new GitHubImportError("REPOSITORY_TOO_LARGE", "Repository source exceeds the 20 MB import limit.", 413);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new GitHubImportError("REPOSITORY_TOO_LARGE", "Repository source exceeds the 20 MB import limit.", 413);
+    const extracted = extractZipUpload(bytes); const decoder = new TextDecoder("utf-8", { fatal: true }); const files: WorkspaceFile[] = [];
+    for (const file of extracted.files) { try { files.push({ path: file.path, content: decoder.decode(file.bytes) }); } catch { /* Invalid text files are excluded. */ } }
+    if (!files.length) throw new GitHubImportError("NO_ANALYZABLE_FILES", "No supported source files were found in the repository.");
+    return files;
+  } catch (error) {
+    if (error instanceof GitHubImportError) throw error;
+    if (error instanceof Error && error.name === "AbortError") throw new GitHubImportError("TIMEOUT", "GitHub source download timed out.", 504);
+    throw new GitHubImportError("SOURCE_UNAVAILABLE", "GitHub source could not be downloaded for the rehearsal.", 502);
+  } finally { clearTimeout(timer); }
 }

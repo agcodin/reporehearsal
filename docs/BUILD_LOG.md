@@ -17,6 +17,7 @@
 - [x] Accounts — replace the seeded persona with authenticated profiles, persistent preferences, and user-owned rehearsal history.
 - [x] Stretch 2 — add timed Interview mode with coaching disabled and interviewer-focused reporting.
 - [x] Public intake — make accounts optional, add a dedicated account entry page, local folder/ZIP analysis, and account-owned repository metadata.
+- [x] Production lifecycle — persist filtered sources and disposable workspaces in R2, authorize sessions in D1, replace browser-local state, add distinct scenarios, live report enhancement, rate limits, deletion, cleanup, migrations, and end-to-end coverage.
 
 ## Phase notes
 
@@ -46,4 +47,8 @@ Replaced the static Maya persona and seeded score history with dispatch-owned Ch
 
 ### Public repository intake
 
-Kept the landing page, demo, public GitHub import, local upload, and rehearsal setup public while protecting only account-specific pages and writes. Added a dedicated optional-account entry page. Local folder and ZIP uploads are analyzed without filesystem extraction; path traversal, decompression expansion, file count, individual file size, secrets, keys, binaries, and generated directories are bounded or excluded. Signed-in users retain repository analysis metadata in D1, while repository contents remain outside the account profile. Google and GitHub identity buttons were not fabricated because the current Sites authentication surface exposes dispatch-owned ChatGPT sign-in but no external OAuth provider configuration.
+Kept the landing page, demo, public GitHub import, local upload, and rehearsal setup public while protecting only account-specific pages and writes. Added a dedicated optional-account entry page. Local folder and ZIP uploads are analyzed without filesystem extraction; path traversal, decompression expansion, file count, individual file size, secrets, keys, binaries, and generated directories are bounded or excluded. Filtered source snapshots are stored in R2 for actual rehearsals; anonymous snapshots expire after 24 hours and signed-in snapshots are reusable. Google and GitHub identity buttons were not fabricated because the current Sites authentication surface exposes ChatGPT sign-in but no external OAuth provider configuration.
+
+### Production lifecycle
+
+Replaced the browser-local rehearsal prototype with authorized D1 session records and per-session R2 working copies. Public GitHub and local imports now store filtered source snapshots so the selected codebase actually drives the rehearsal. Added separate database, configuration, and provider-drift injections and validators; server-backed files, evidence, hypotheses, hints, approved commands, time limits, reports, and immediate workspace disposal; optional OpenAI Responses API structured report enhancement; fixed-window abuse limits; repository deletion; scheduled cleanup; schema migrations; and a complete anonymous API lifecycle test.

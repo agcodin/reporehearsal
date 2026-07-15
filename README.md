@@ -13,13 +13,13 @@ Developers often practice incident response for the first time during a real out
 - Seeded TypeScript billing repository with realistic routes, migrations, fixtures, logs, health checks, and tests.
 - Deterministic repository map and incident compatibility analysis.
 - Versioned database, configuration, and external-dependency incident templates.
-- Isolated workspace abstraction with strict paths, approved command IDs, expiry, and cleanup.
+- D1/R2-backed repository snapshots and per-session working copies with strict paths, opaque access tokens, expiry, deletion, and cleanup.
 - IDE-style investigation workspace with editable code, logs, test results, database comparison, service health, hypotheses, hints, and timeline.
 - Public tests, hidden behavioral checks, unsafe-patch scanning, scoring, and Markdown after-action reports.
-- Deterministic fallback mode that needs neither an OpenAI key nor a private repository.
+- Deterministic validation and reporting that need neither an OpenAI key nor a private repository; configured OpenAI structured output can enhance coaching prose.
 - Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
 - Local folder and ZIP analysis with traversal, expansion, file-count, secret, binary, and generated-file controls.
-- Optional ChatGPT sign-in with persistent account profiles, rehearsal preferences, saved results, saved repository metadata, and real empty/history states.
+- Optional ChatGPT sign-in with persistent profiles, preferences, results, reusable repository snapshots, and real empty/history states.
 - Interview mode with a visible countdown, disabled coaching, and interviewer-focused reporting.
 
 ## Architecture
@@ -29,16 +29,17 @@ flowchart LR
   Browser --> Next[Next.js App Router]
   Next --> Analyzer[Repository analyzer]
   Next --> Session[Session service]
-  Session --> Sandbox[SandboxService]
-  Sandbox --> Copy[Ephemeral repository copy]
+  Session --> Copy[R2 session working copy]
   Copy --> Evidence[Files · logs · DB · health]
   Session --> Validator[Public + hidden validation]
   Validator --> Score[Deterministic score]
   Score --> Report[After-action report]
-  AI[GPT enhancement] -. schema-validated advisory output .-> Report
+  D1[(D1 metadata + reports)] --> Session
+  R2[(R2 source + workspace objects)] --> Copy
+  AI[OpenAI Responses API] -. schema-validated advisory output .-> Report
 ```
 
-The current environment lacks Docker and PostgreSQL, so the included runnable demo uses the specification-approved local process adapter and seeded state. A production PostgreSQL Prisma schema and Dockerized billing fixture are included. See [Architecture](docs/ARCHITECTURE.md) and [Security](docs/SECURITY.md).
+The Sites deployment is a production serverless implementation: D1 stores authorization and lifecycle state, R2 stores filtered source snapshots and disposable working copies, and deterministic adapters model approved commands and evidence without executing untrusted uploads. A Dockerized billing fixture and `SandboxService` boundary remain available for teams that connect a dedicated hardened execution host. See [Architecture](docs/ARCHITECTURE.md) and [Security](docs/SECURITY.md).
 
 ## Supported stack
 
@@ -68,11 +69,11 @@ docker compose -f demo-repositories/billing-service/docker-compose.yml up --buil
 
 ## Environment variables
 
-Copy `.env.example`. `OPENAI_API_KEY` is optional. `OPENAI_MODEL` is read from configuration rather than hardcoded in product services. Sandbox limits default to 45 minutes, 1 CPU, and 1 GB memory. Never commit `.env`.
+Copy `.env.example`. `OPENAI_API_KEY` is optional and `OPENAI_MODEL` defaults to `gpt-5.6`. `CLEANUP_SECRET` protects the scheduled cleanup endpoint. Sites supplies the D1 `DB` and R2 `REPOSITORIES` bindings. Never commit `.env`.
 
 ## Accounts and demo mode
 
-No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Sign in with ChatGPT to create a persistent account, save rehearsal results, set default modes and time limits, retain repository metadata, and build a personal readiness history. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal. `DEMO_MODE=true` enables template summaries, hints, scoring, and reports without an OpenAI API call.
+No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Anonymous repository snapshots expire after 24 hours and are authorized by an opaque browser-session token. Sign in with ChatGPT to save results, preferences, and reusable snapshots. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal.
 
 ## How fault injection works
 
@@ -89,7 +90,7 @@ A safe repair must handle legacy data, update the secondary creation path, prese
 - Logs redact API keys, database URLs, bearer tokens, and session secrets.
 - Repository contents are untrusted prompt data and cannot change AI instructions.
 - Hidden test source stays outside the exercise workspace.
-- Workspaces expire and cleanup is idempotent.
+- Active workspaces expire at the selected time limit, completed workspaces are deleted, imports are rate-limited, and cleanup is idempotent.
 
 ## OpenAI and Codex usage
 
@@ -110,11 +111,11 @@ npm run sandbox:cleanup
 
 ## GitHub import
 
-Open **Repositories** and enter a canonical public URL such as `https://github.com/owner/repository`. RepoRehearsal reads the public repository metadata, recursive tree, and root `package.json`, then deterministically detects TypeScript, Express, Prisma, and the test framework. It does not write to, fork, or modify the source. `GITHUB_TOKEN` is optional and only raises GitHub API rate limits; private repository access remains disabled.
+Open **Repositories** and enter a canonical public URL such as `https://github.com/owner/repository`. RepoRehearsal validates metadata, downloads a bounded branch archive from GitHub's fixed codeload host, excludes unsafe files, and stores the filtered snapshot in R2. It does not write to, fork, or modify the source. `GITHUB_TOKEN` is optional and only raises GitHub API rate limits; private repository access remains disabled.
 
 ## Local uploads
 
-Open **Repositories** and select either a project folder or a ZIP archive. The request is limited to 20 MB expanded and 3,000 files. RepoRehearsal analyzes supported text source/configuration files in memory, rejects unsafe paths, and excludes generated directories, environment files, private keys, credential files, binaries, and oversized files. Signed-in users retain only the analysis metadata on their dashboard; repository contents are not stored in the account profile.
+Open **Repositories** and select either a project folder or a ZIP archive. The request is limited to 20 MB expanded and 3,000 files. RepoRehearsal analyzes supported text files in memory, rejects unsafe paths, excludes generated directories, environment files, private keys, credential files, binaries, and oversized files, then stores the filtered snapshot in R2. Anonymous snapshots expire after 24 hours; signed-in snapshots can be reused and removed through the repository API/UI.
 
 ## Interview mode
 
@@ -122,14 +123,14 @@ Choose **Interview mode** while configuring a rehearsal. The workspace displays 
 
 ## Known limitations
 
-- The runnable hackathon environment uses in-process seeded state because Docker and PostgreSQL are unavailable here.
-- Private GitHub imports, Google/GitHub identity providers, and arbitrary repository execution are not enabled by the current Sites hosting authentication surface.
+- Sites does not expose Google or GitHub OAuth configuration, so the deployed account provider is ChatGPT only. Public GitHub URLs and local uploads remain account-optional.
+- The hosted worker intentionally does not execute arbitrary uploaded code. Real container execution requires a separate hardened sandbox service with network policy, quotas, patching, and audit logs.
 - The workspace editor is a focused textarea implementation rather than Monaco.
-- Secondary templates use the shared deterministic workflow; the database migration path is the most polished.
+- OpenAI report enhancement activates only when `OPENAI_API_KEY` is configured; deterministic validation and reports remain fully functional without it.
 
 ## Future work
 
-Authorized private GitHub connections, additional identity providers, organization-specific templates, team incident rooms, Kubernetes scenarios, runbook validation, progression analytics, and additional language adapters.
+Authorized private GitHub connections and additional identity providers when the hosting platform exposes OAuth, plus organization-specific templates, team incident rooms, a hardened remote execution adapter, Kubernetes scenarios, and additional language adapters.
 
 ## Screenshots and demo
 

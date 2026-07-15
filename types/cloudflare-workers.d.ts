@@ -9,5 +9,14 @@ interface D1Database {
   prepare(query: string): D1PreparedStatement;
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
 }
+interface R2ObjectBody {
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>;
+  put(key: string, value: string | ArrayBuffer | ArrayBufferView | Blob, options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }): Promise<unknown>;
+  delete(key: string | string[]): Promise<void>;
+}
 interface Fetcher { fetch(request: Request): Promise<Response> }
-declare module "cloudflare:workers" { export const env: { DB?: D1Database } }
+declare module "cloudflare:workers" { export const env: { DB?: D1Database; REPOSITORIES?: R2Bucket } }

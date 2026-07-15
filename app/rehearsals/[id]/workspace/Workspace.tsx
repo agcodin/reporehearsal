@@ -1,34 +1,134 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { incidents, injectedBillingSource } from "../../../../src/data";
-import { evaluateRepair } from "../../../../src/evaluation/scoring";
-import type { AccountMode } from "../../../../src/accounts/types";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Tab = "terminal" | "logs" | "tests" | "database" | "health";
-const initialTimeline = ["Incident started", "Briefing acknowledged"];
-const allowedModes: AccountMode[] = ["GUIDED", "INDEPENDENT", "INTERVIEW"];
+type Timeline = { type: string; timestamp: string; summary: string };
+type Session = { id: string; repositoryName: string; mode: string; status: string; startedAt: string | null; timeLimitMinutes: number; hintCount: number; hypotheses: string[]; timeline: Timeline[] };
+type Briefing = { title: string; severity: string; customerReport: string; knownImpact: string[] };
+type Evidence = { logs: string[]; database: string[]; health: string[]; briefing: Briefing; targetPath: string; hints: string[] };
 
-export default function Workspace() {
-  const router = useRouter(); const params = useSearchParams(); const incident = incidents[0];
-  const requestedMode = params.get("mode") as AccountMode | null; const mode = requestedMode && allowedModes.includes(requestedMode) ? requestedMode : "GUIDED";
-  const requestedLimit = Number(params.get("limit")); const limit = [15, 25, 45, 60].includes(requestedLimit) ? requestedLimit : 25;
-  const [remaining, setRemaining] = useState(limit * 60); const [source, setSource] = useState(injectedBillingSource); const [tab, setTab] = useState<Tab>("logs");
-  const [hint, setHint] = useState(0); const [hypothesis, setHypothesis] = useState(""); const [savedHypotheses, setSavedHypotheses] = useState<string[]>([]);
-  const [timeline, setTimeline] = useState(initialTimeline); const [submitting, setSubmitting] = useState(false);
-  const [consoleText, setConsoleText] = useState("14:14:09.184 ERROR billing-api request_id=req_8f2a route=/api/organizations/org_new_02/billing\nTypeError: Cannot read properties of null (reading 'toUpperCase')\n14:14:09.187 INFO request completed status=500 duration_ms=24");
-  const fixed = useMemo(() => source.includes("billingRegion: input.billingRegion ??") && source.includes("UPDATE billing_profiles") && !source.includes("always return success"), [source]);
-  useEffect(() => { const timer = window.setInterval(() => setRemaining(value => Math.max(0, value - 1)), 1_000); return () => window.clearInterval(timer); }, []);
-  const timerText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
-  function action(name: string, nextTab: Tab, text: string) { setTab(nextTab); setConsoleText(text); setTimeline(items => [...items, name]); }
-  function saveHypothesis() { if (!hypothesis.trim()) return; setSavedHypotheses(items => [...items, hypothesis.trim()]); setTimeline(items => [...items, "Hypothesis recorded"]); setHypothesis(""); }
-  function requestHint() { const next = Math.min(hint + 1, 4); setHint(next); setTimeline(items => [...items, `Level ${next} hint requested`]); }
-  async function submit() {
-    setSubmitting(true); const result = evaluateRepair(source, hint); const id = sessionStorage.getItem("rr-session-id") ?? crypto.randomUUID();
-    const durationMinutes = Math.max(1, Math.ceil((limit * 60 - remaining) / 60));
-    sessionStorage.setItem("rr-session-id", id); sessionStorage.setItem("rr-source", source); sessionStorage.setItem("rr-hints", String(hint)); sessionStorage.setItem("rr-timeline", JSON.stringify(timeline)); sessionStorage.setItem("rr-mode", mode);
-    try { await fetch("/api/account/rehearsals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, incidentTemplateId: incident.id, incidentName: incident.name, repositoryName: "RepoRehearsal Billing Demo", mode, status: result.passed ? "COMPLETED" : "UNRESOLVED", score: result.score, durationMinutes, hintsUsed: hint }) }); } catch { /* Anonymous and offline rehearsals still complete locally. */ }
-    router.push(`/rehearsals/demo/report?passed=${result.passed}&mode=${mode}`);
+export default function Workspace({ sessionId }: { sessionId: string }) {
+  const router = useRouter();
+  const [session, setSession] = useState<Session | null>(null);
+  const [evidence, setEvidence] = useState<Evidence | null>(null);
+  const [files, setFiles] = useState<string[]>([]);
+  const [path, setPath] = useState("");
+  const [source, setSource] = useState("");
+  const [savedSource, setSavedSource] = useState("");
+  const [tab, setTab] = useState<Tab>("logs");
+  const [consoleText, setConsoleText] = useState("Loading incident evidence…");
+  const [hypothesis, setHypothesis] = useState("");
+  const [activeHint, setActiveHint] = useState("");
+  const [remaining, setRemaining] = useState(0);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const token = typeof window === "undefined" ? "" : sessionStorage.getItem(`rr-session-${sessionId}`) ?? "";
+
+  const api = useCallback(async (url: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers);
+    if (token) headers.set("x-rehearsal-access", token);
+    const response = await fetch(url, { ...init, headers });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message ?? "The request failed.");
+    return data;
+  }, [token]);
+
+  const openFile = useCallback(async (nextPath: string) => {
+    setBusy("file"); setError("");
+    try {
+      const data = await api(`/api/rehearsals/${sessionId}/files/content?path=${encodeURIComponent(nextPath)}`);
+      setPath(nextPath); setSource(data.content); setSavedSource(data.content);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The file could not be opened."); }
+    finally { setBusy(""); }
+  }, [api, sessionId]);
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const [sessionData, fileData, evidenceData] = await Promise.all([
+          api(`/api/rehearsals/${sessionId}`), api(`/api/rehearsals/${sessionId}/files`), api(`/api/rehearsals/${sessionId}/evidence`),
+        ]);
+        if (!active) return;
+        if (sessionData.session.status === "COMPLETED") { router.replace(`/rehearsals/${sessionId}/report`); return; }
+        if (sessionData.session.status !== "ACTIVE") { router.replace(`/rehearsals/${sessionId}/preparing`); return; }
+        setSession(sessionData.session); setFiles(fileData.files); setEvidence(evidenceData.evidence);
+        setConsoleText(evidenceData.evidence.logs.join("\n"));
+        await openFile(evidenceData.evidence.targetPath);
+      } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "The rehearsal could not be loaded."); }
+    }
+    void load();
+    return () => { active = false; };
+  }, [api, openFile, router, sessionId]);
+
+  useEffect(() => {
+    if (!session?.startedAt) return;
+    const startedAt = session.startedAt;
+    const timeLimitMinutes = session.timeLimitMinutes;
+    function update() { setRemaining(Math.max(0, timeLimitMinutes * 60 - Math.floor((Date.now() - Date.parse(startedAt)) / 1000))); }
+    update(); const timer = window.setInterval(update, 1_000); return () => window.clearInterval(timer);
+  }, [session?.startedAt, session?.timeLimitMinutes]);
+
+  async function save() {
+    if (!path || source === savedSource) return;
+    setBusy("save"); setError("");
+    try { await api(`/api/rehearsals/${sessionId}/files/content`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: source }) }); setSavedSource(source); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Changes could not be saved."); }
+    finally { setBusy(""); }
   }
-  return <main className="workspace-page"><div className="workspace-top"><span className="badge badge-red">SEV-2</span><h1>New accounts cannot open billing</h1><span className={`mode-pill ${mode === "INTERVIEW" ? "interview" : ""}`}>{mode}</span><span className={`timer ${remaining < 300 ? "timer-warning" : ""}`}>{timerText}</span><button className="button button-danger button-small" onClick={submit} disabled={submitting}>{submitting ? "Validating…" : "Submit repair →"}</button></div><div className="workspace-grid"><aside className="file-panel"><div className="panel-head">EXPLORER · BILLING-SERVICE</div><div className="file-tree"><div>⌄ src</div><div>　⌄ routes</div><div>　　billing.ts</div><div>　⌄ services</div><div className="active-file">　　billing.ts　●</div><div>⌄ prisma</div><div>　schema.prisma</div><div>　⌄ migrations</div><div>　　migration.sql</div><div>⌄ tests</div><div>　billing.test.ts</div><div>package.json</div><div>docker-compose.yml</div></div></aside><section className="editor-zone"><div className="code-editor"><div className="editor-toolbar"><span>src/services/billing.ts</span><i>{fixed ? "safe repair detected" : "modified in sandbox"}</i></div><textarea aria-label="Code editor" spellCheck={false} value={source} onChange={event => { setSource(event.target.value); setTimeline(items => items.at(-1) === "File edited" ? items : [...items, "File edited"]); }} /></div><div className="bottom-console"><div className="tabs">{(["terminal", "logs", "tests", "database", "health"] as Tab[]).map(item => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item.toUpperCase()}</button>)}</div><div className="console-body">{consoleText}</div></div></section><aside className="side-panel"><div className="brief"><span className="badge badge-red">{incident.briefing.severity}</span><h2>{incident.briefing.title}</h2><p>{incident.briefing.customerReport}</p><p><b>Impact</b></p><ul>{incident.briefing.knownImpact.map(item => <li key={item}>{item}</li>)}</ul></div><div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>INVESTIGATION TOOLS</div><button className="button button-ghost button-small" onClick={() => action("Failure reproduced", "terminal", "$ curl sandbox://billing/org_new_02\nHTTP/1.1 500 Internal Server Error\n{ \"requestId\": \"req_8f2a\", \"code\": \"BILLING_SERIALIZATION_FAILED\" }")}>Reproduce failing request</button><button className="button button-ghost button-small" onClick={() => action("Billing records compared", "database", "SELECT organization_id, billing_region, source FROM billing_profiles;\n\norg_legacy_01 | US   | signup\norg_legacy_02 | EU   | signup\norg_new_01    | NULL | partner_import\norg_new_02    | NULL | partner_import\n\n4 rows")}>Compare billing records</button><button className="button button-ghost button-small" onClick={() => action("Migration inspected", "terminal", "$ sed -n '1,120p' prisma/migrations/202606121410_add_billing_region/migration.sql\n\nALTER TABLE billing_profiles ADD COLUMN billing_region TEXT;\n-- partner-import rows were not backfilled before the application rollout\nALTER TABLE billing_profiles ALTER COLUMN billing_region SET NOT NULL;")}>Inspect recent migration</button><button className="button button-ghost button-small" onClick={() => action("Public tests run", "tests", fixed ? "✓ billing page succeeds for new account\n✓ legacy account remains healthy\n✓ partner import creates valid billing profile\n\n3 passed" : "✓ existing account billing page\n✗ new account billing page — expected 200, received 500\n\n1 failed, 1 passed")}>Run public tests</button><button className="button button-ghost button-small" onClick={() => action("Service health inspected", "health", "billing-api       DEGRADED   /ready 503\nauthentication    HEALTHY    /health 200\ndashboard         HEALTHY    /health 200\npostgres-fixture  HEALTHY    connection 7ms")}>Check service health</button></div><div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>HYPOTHESES</div>{savedHypotheses.map((item, index) => <div className="hint-box" key={index}>{item}</div>)}<textarea rows={3} value={hypothesis} onChange={event => setHypothesis(event.target.value)} aria-label="Investigation hypothesis" placeholder="State what you believe and the evidence that supports it" /><button className="button button-ghost button-small" onClick={saveHypothesis}>Add hypothesis</button></div>{mode !== "INTERVIEW" ? <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>COACH · {hint}/4 HINTS</div><button className="button button-ghost button-small" onClick={requestHint}>Request next hint (−{hint < 1 ? 1 : hint < 2 ? 2 : hint < 3 ? 4 : 7} pts)</button>{hint > 0 && <div className="hint-box"><b>Level {hint}</b><br />{incident.hints[hint - 1]}</div>}</div> : <div className="side-section interview-lock"><div className="panel-head" style={{ padding: 0, border: 0 }}>INTERVIEW CONDITIONS</div><p>Coaching hints are disabled. Your report will emphasize evidence use, verification, and communication.</p></div>}<div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>TIMELINE</div>{timeline.map((item, index) => <div className="timeline-item" key={`${item}-${index}`}><b>{item}</b><span>+{String(index * 2).padStart(2, "0")}:0{(index * 7) % 10}</span></div>)}</div></aside></div></main>;
+
+  async function command(commandId: string, nextTab: Tab) {
+    setBusy(commandId); setError("");
+    try { if (source !== savedSource) await save(); const data = await api(`/api/rehearsals/${sessionId}/commands`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commandId }) }); setTab(nextTab); setConsoleText(data.result.output); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The command failed."); }
+    finally { setBusy(""); }
+  }
+
+  async function showDatabase() {
+    setBusy("database");
+    try { const data = await api(`/api/rehearsals/${sessionId}/database/query`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ queryId: "compare-affected-records" }) }); setTab("database"); setConsoleText(data.rows.join("\n")); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Evidence could not be loaded."); }
+    finally { setBusy(""); }
+  }
+
+  async function addHypothesis() {
+    if (!hypothesis.trim()) return;
+    setBusy("hypothesis");
+    try { const data = await api(`/api/rehearsals/${sessionId}/hypotheses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hypothesis }) }); setSession(current => current ? { ...current, hypotheses: data.hypotheses } : current); setHypothesis(""); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Hypothesis could not be recorded."); }
+    finally { setBusy(""); }
+  }
+
+  async function hint() {
+    setBusy("hint");
+    try { const data = await api(`/api/rehearsals/${sessionId}/hints`, { method: "POST" }); setActiveHint(data.hint); setSession(current => current ? { ...current, hintCount: data.level } : current); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Hint could not be loaded."); }
+    finally { setBusy(""); }
+  }
+
+  async function submit() {
+    setBusy("submit"); setError("");
+    try { if (source !== savedSource) await save(); await api(`/api/rehearsals/${sessionId}/submit`, { method: "POST" }); router.push(`/rehearsals/${sessionId}/report`); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The repair could not be submitted."); setBusy(""); }
+  }
+
+  const timerText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
+  if (!session || !evidence) return <main className="app-page"><p className="eyebrow">INCIDENT WORKSPACE</p><h1>{error || "Loading your rehearsal…"}</h1></main>;
+
+  return <main className="workspace-page">
+    <div className="workspace-top"><span className="badge badge-red">{evidence.briefing.severity}</span><h1>{evidence.briefing.title}</h1><span className={`mode-pill ${session.mode === "INTERVIEW" ? "interview" : ""}`}>{session.mode}</span><span className={`timer ${remaining < 300 ? "timer-warning" : ""}`}>{timerText}</span><button className="button button-danger button-small" onClick={submit} disabled={Boolean(busy)}>{busy === "submit" ? "Validating…" : "Submit repair →"}</button></div>
+    {error && <div className="error-banner" role="alert">{error}</div>}
+    <div className="workspace-grid">
+      <aside className="file-panel"><div className="panel-head">EXPLORER · {session.repositoryName.toUpperCase()}</div><div className="file-tree">{files.map(file => <button className={path === file ? "active-file" : ""} onClick={() => void openFile(file)} key={file}>{file}</button>)}</div></aside>
+      <section className="editor-zone"><div className="code-editor"><div className="editor-toolbar"><span>{path}</span><i>{source === savedSource ? "saved to session" : "unsaved changes"}</i><button className="button button-ghost button-small" onClick={save} disabled={source === savedSource || Boolean(busy)}>{busy === "save" ? "Saving…" : "Save"}</button></div><textarea aria-label="Code editor" spellCheck={false} value={source} onChange={event => setSource(event.target.value)} /></div><div className="bottom-console"><div className="tabs">{(["terminal", "logs", "tests", "database", "health"] as Tab[]).map(item => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item.toUpperCase()}</button>)}</div><div className="console-body">{consoleText}</div></div></section>
+      <aside className="side-panel"><div className="brief"><span className="badge badge-red">{evidence.briefing.severity}</span><h2>{evidence.briefing.title}</h2><p>{evidence.briefing.customerReport}</p><p><b>Impact</b></p><ul>{evidence.briefing.knownImpact.map(item => <li key={item}>{item}</li>)}</ul></div>
+        <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>INVESTIGATION TOOLS</div><button className="button button-ghost button-small" onClick={() => { setTab("logs"); setConsoleText(evidence.logs.join("\n")); }}>Inspect incident logs</button><button className="button button-ghost button-small" onClick={showDatabase}>Compare affected records</button><button className="button button-ghost button-small" onClick={() => command("migration-status", "terminal")}>Inspect dependency state</button><button className="button button-ghost button-small" onClick={() => command("run-tests", "tests")}>Run incident tests</button><button className="button button-ghost button-small" onClick={() => command("check-health", "health")}>Check service health</button></div>
+        <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>HYPOTHESES</div>{session.hypotheses.map((item, index) => <div className="hint-box" key={`${item}-${index}`}>{item}</div>)}<textarea rows={3} value={hypothesis} onChange={event => setHypothesis(event.target.value)} aria-label="Investigation hypothesis" placeholder="State your belief and supporting evidence" /><button className="button button-ghost button-small" onClick={addHypothesis} disabled={busy === "hypothesis"}>Add hypothesis</button></div>
+        {session.mode !== "INTERVIEW" ? <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>COACH · {session.hintCount}/{evidence.hints.length} HINTS</div><button className="button button-ghost button-small" onClick={hint} disabled={busy === "hint" || session.hintCount >= evidence.hints.length}>Request next hint</button>{activeHint && <div className="hint-box"><b>Level {session.hintCount}</b><br />{activeHint}</div>}</div> : <div className="side-section interview-lock"><div className="panel-head" style={{ padding: 0, border: 0 }}>INTERVIEW CONDITIONS</div><p>Coaching hints are disabled. The report emphasizes evidence use, verification, and communication.</p></div>}
+        <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>TIMELINE</div>{session.timeline.map((item, index) => <div className="timeline-item" key={`${item.timestamp}-${index}`}><b>{item.summary}</b><span>{new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>)}</div>
+      </aside>
+    </div>
+  </main>;
 }

@@ -1,13 +1,43 @@
 "use client";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { evaluateRepair } from "../../../../src/evaluation/scoring";
 
-export default function Report() {
-  const params = useSearchParams(); const browser = typeof window !== "undefined"; const source = browser ? sessionStorage.getItem("rr-source") ?? "" : "";
-  const hints = browser ? Number(sessionStorage.getItem("rr-hints") ?? 0) : 0; const mode = params.get("mode") ?? (browser ? sessionStorage.getItem("rr-mode") : null) ?? "GUIDED";
-  const result = evaluateRepair(source, hints); const passed = params.get("passed") !== "false" && result.passed; const score = passed ? result.score : Math.min(result.score, 54);
-  const markdown = `# RepoRehearsal after-action report\n\n**Mode:** ${mode}\n**Score:** ${score}/100\n\n## Root cause\nThe partner-import path omitted billingRegion after the schema transition, and serialization assumed the field was always present.\n\n## Repair\n${passed ? "Passed public and hidden validation." : "Did not pass hidden validation."}\n`;
-  function download() { const anchor = document.createElement("a"); anchor.href = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" })); anchor.download = "reporehearsal-after-action.md"; anchor.click(); URL.revokeObjectURL(anchor.href); }
-  return <main><section className="report-hero"><div className="report-inner"><span className="report-kicker">{mode === "INTERVIEW" ? "INTERVIEW ASSESSMENT" : "REHEARSAL COMPLETE"} · {passed ? "INCIDENT RESOLVED" : "REPAIR INCOMPLETE"}</span><div className="score-layout"><div><div className="big-score">{score}<span>/100</span></div><span className={`badge ${passed ? "badge-green" : "badge-red"}`}>{passed ? "STRONG RESPONSE" : "NEEDS REVISION"}</span></div><div><h1>{passed ? "You repaired the cause—not just the symptom." : "The visible symptom may remain."}</h1><p>{passed ? "The change protects legacy data, fixes the secondary creation path, and preserves the billing-region constraint." : "Review the failed validation and return to the workspace with a root-cause repair."}</p><div className="breakdown">{result.breakdown.map(item => <div key={item.label}><small>{item.label.toUpperCase()}</small><b>{passed ? item.earned : Math.min(item.earned, Math.floor(item.possible * .55))}/{item.possible}</b></div>)}</div></div></div></div></section><div className="report-body"><div><section className="report-section"><h2>Root cause</h2><p>The migration introduced <code>billing_region</code> as a required field, but the partner-import account path still created billing profiles without it. The billing serializer called <code>toUpperCase()</code> on the missing value, causing account-specific HTTP 500 responses.</p><div className="callout"><b>Root cause ≠ symptom</b><p>The null serialization exception was the visible mechanism. The incomplete schema transition across creation paths was the underlying cause.</p></div></section><section className="report-section"><h2>Deterministic validation</h2>{result.checks.map(check => <div className="check-row" key={check.name}><span>{check.status === "passed" ? "✓" : "×"}</span><div><b>{check.name} {check.hidden && <small>· HIDDEN</small>}</b><p>{check.detail}</p></div></div>)}</section><section className="report-section"><h2>Prevention measures</h2><ol><li>Add a migration contract test against both clean and legacy snapshots.</li><li>Use expand/backfill/contract sequencing for newly required columns.</li><li>Monitor the null rate and account-creation source during rollout.</li><li>Require fixtures for every account-creation path in billing regression tests.</li></ol></section></div><aside><section className="report-section"><h2>{mode === "INTERVIEW" ? "Interviewer review" : "Investigation review"}</h2><p><b>Evidence used</b><br />Correlated request log, failing HTTP response, working/failing database comparison, public tests.</p><p><b>Missed evidence</b><br />Migration history could have been inspected earlier.</p><p><b>{mode === "INTERVIEW" ? "Independence" : "Hints"}</b><br />{mode === "INTERVIEW" ? "Completed under interview conditions with coaching disabled." : `${hints} requested · ${hints === 0 ? "full independence" : "independence deduction applied"}`}</p></section><section className="report-section"><h2>Recommended next</h2><span className="badge badge-blue">CONFIGURATION</span><h3>Container host mismatch</h3><p>Build confidence reasoning about service network boundaries.</p><Link className="button button-dark" href="/rehearsals/new">Choose next exercise →</Link></section><button className="button button-ghost" style={{ width: "100%" }} onClick={download}>Export Markdown ↓</button></aside></div></main>;
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+type Check = { name: string; status: "passed" | "failed"; hidden?: boolean; detail: string };
+type Breakdown = { label: string; earned: number; possible: number };
+type Validation = { score: number; passed: boolean; checks: Check[]; breakdown: Breakdown[] };
+type ReportData = { title: string; rootCause: string; summary: string; evidenceUsed: string[]; missedEvidence: string[]; prevention: string[]; score: number; passed: boolean; markdown: string; aiEnhanced: boolean };
+
+export default function Report({ sessionId }: { sessionId: string }) {
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [validation, setValidation] = useState<Validation | null>(null);
+  const [error, setError] = useState("");
+  const token = typeof window === "undefined" ? "" : sessionStorage.getItem(`rr-session-${sessionId}`) ?? "";
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/rehearsals/${sessionId}/report`, { headers: token ? { "x-rehearsal-access": token } : {} }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message ?? "The report is not ready.");
+      if (active) { setReport(data.report); setValidation(data.validation); }
+    }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "The report could not be loaded."); });
+    return () => { active = false; };
+  }, [sessionId, token]);
+
+  function download() {
+    if (!report) return;
+    const anchor = document.createElement("a");
+    const href = URL.createObjectURL(new Blob([report.markdown], { type: "text/markdown" }));
+    anchor.href = href; anchor.download = `reporehearsal-${sessionId}.md`; anchor.click(); URL.revokeObjectURL(href);
+  }
+
+  if (!report || !validation) return <main className="app-page"><p className="eyebrow">AFTER-ACTION REPORT</p><h1>{error || "Generating your verified report…"}</h1>{error && <Link className="button button-dark" href={`/rehearsals/${sessionId}/workspace`}>Return to workspace</Link>}</main>;
+
+  return <main><section className="report-hero"><div className="report-inner"><span className="report-kicker">REHEARSAL COMPLETE · {report.passed ? "INCIDENT RESOLVED" : "REPAIR INCOMPLETE"}</span><div className="score-layout"><div><div className="big-score">{report.score}<span>/100</span></div><span className={`badge ${report.passed ? "badge-green" : "badge-red"}`}>{report.passed ? "VALIDATED REPAIR" : "NEEDS REVISION"}</span></div><div><h1>{report.title}</h1><p>{report.summary}</p>{report.aiEnhanced && <p><small>Communication feedback enhanced with the configured OpenAI model; validation and score remain deterministic.</small></p>}<div className="breakdown">{validation.breakdown.map(item => <div key={item.label}><small>{item.label.toUpperCase()}</small><b>{item.earned}/{item.possible}</b></div>)}</div></div></div></div></section>
+    <div className="report-body"><div><section className="report-section"><h2>Root cause</h2><p>{report.rootCause}</p><div className="callout"><b>Outcome</b><p>{report.passed ? "The submitted workspace passed every required deterministic check." : "One or more required checks failed. Reopen a new rehearsal and repair the underlying cause."}</p></div></section>
+      <section className="report-section"><h2>Deterministic validation</h2>{validation.checks.map(check => <div className="check-row" key={check.name}><span>{check.status === "passed" ? "✓" : "×"}</span><div><b>{check.name} {check.hidden && <small>· HIDDEN</small>}</b><p>{check.detail}</p></div></div>)}</section>
+      <section className="report-section"><h2>Prevention measures</h2><ol>{report.prevention.map(item => <li key={item}>{item}</li>)}</ol></section></div>
+      <aside><section className="report-section"><h2>Investigation review</h2><p><b>Evidence used</b></p>{report.evidenceUsed.length ? <ul>{report.evidenceUsed.map(item => <li key={item}>{item}</li>)}</ul> : <p>No investigation evidence was recorded.</p>}<p><b>Missed evidence</b></p>{report.missedEvidence.length ? <ul>{report.missedEvidence.map(item => <li key={item}>{item}</li>)}</ul> : <p>No material evidence gaps identified.</p>}</section><section className="report-section"><h2>Recommended next</h2><p>Run another incident category or repeat this scenario without coaching to strengthen independent diagnosis.</p><Link className="button button-dark" href="/rehearsals/new">Choose next exercise →</Link></section><button className="button button-ghost" style={{ width: "100%" }} onClick={download}>Export Markdown ↓</button></aside>
+    </div>
+  </main>;
 }

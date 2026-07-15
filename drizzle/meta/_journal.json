@@ -15,6 +15,27 @@
       "when": 1784106504978,
       "tag": "0001_great_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784109258182,
+      "tag": "0002_shallow_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784109331917,
+      "tag": "0003_sticky_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1784109468727,
+      "tag": "0004_nifty_ultragirl",
+      "breakpoints": true
     }
   ]
 }
