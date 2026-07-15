@@ -1,0 +1,14 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+model User { id String @id @default(cuid()) email String @unique name String? createdAt DateTime @default(now()) repositories Repository[] sessions RehearsalSession[] }
+model Repository { id String @id @default(cuid()) userId String user User @relation(fields:[userId],references:[id]) name String sourceType RepositorySourceType originalPath String? archivePath String? repositoryMap Json? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt sessions RehearsalSession[] }
+model IncidentTemplateRecord { id String @id version Int name String category IncidentCategory difficulty Difficulty definition Json enabled Boolean @default(true) sessions RehearsalSession[] }
+model RehearsalSession { id String @id @default(cuid()) userId String repositoryId String incidentTemplateId String status SessionStatus @default(PREPARING) mode SessionMode difficulty Difficulty expiresAt DateTime score Int? user User @relation(fields:[userId],references:[id]) repository Repository @relation(fields:[repositoryId],references:[id]) incidentTemplate IncidentTemplateRecord @relation(fields:[incidentTemplateId],references:[id]) events SessionEvent[] hints HintUsage[] report AfterActionReport? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
+model SessionEvent { id String @id @default(cuid()) sessionId String session RehearsalSession @relation(fields:[sessionId],references:[id],onDelete:Cascade) eventType String payload Json createdAt DateTime @default(now()) @@index([sessionId,createdAt]) }
+model HintUsage { id String @id @default(cuid()) sessionId String session RehearsalSession @relation(fields:[sessionId],references:[id],onDelete:Cascade) level Int content String penalty Int createdAt DateTime @default(now()) }
+model AfterActionReport { id String @id @default(cuid()) sessionId String @unique session RehearsalSession @relation(fields:[sessionId],references:[id],onDelete:Cascade) rootCause String impact String investigationReview Json repairReview Json preventionSteps Json reportMarkdown String createdAt DateTime @default(now()) }
+enum RepositorySourceType { DEMO UPLOAD GITHUB }
+enum IncidentCategory { DATABASE CONFIGURATION EXTERNAL_DEPENDENCY }
+enum Difficulty { BEGINNER INTERMEDIATE ADVANCED }
+enum SessionMode { GUIDED INDEPENDENT }
+enum SessionStatus { PREPARING READY ACTIVE VALIDATING COMPLETED FAILED EXPIRED }
