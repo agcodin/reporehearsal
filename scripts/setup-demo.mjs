@@ -1,0 +1,2 @@
+import { mkdir,rm,writeFile } from "node:fs/promises"; import path from "node:path";
+const root=path.resolve("work/sandboxes/demo-seed");await rm(root,{recursive:true,force:true});await mkdir(root,{recursive:true});await writeFile(path.join(root,"manifest.json"),JSON.stringify({repository:"billing-demo",baseline:"passed",incident:"db-required-field-migration-v1",preparedAt:new Date().toISOString()},null,2));console.log(`Prepared deterministic demo seed at ${root}`);

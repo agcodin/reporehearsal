@@ -1,0 +1,1 @@
+import { rm,mkdir } from "node:fs/promises"; import path from "node:path";const root=path.resolve("work/sandboxes");await rm(root,{recursive:true,force:true});await mkdir(root,{recursive:true});console.log(`Removed expired local sandbox fixtures from ${root}`);
