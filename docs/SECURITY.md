@@ -8,6 +8,8 @@ Every session works on a copied repository with a unique ID and maximum lifetime
 
 Archive entries are rejected when they contain absolute paths, parent traversal, null bytes, symlinks, nested archives, unsupported binaries, excessive file counts, or excessive expanded size. Extraction must create files only beneath a newly allocated workspace and must not follow links.
 
+Public GitHub import accepts only canonical `https://github.com/owner/repository` URLs, uses fixed `api.github.com` endpoints derived from validated owner/repository segments, limits size and file count, and rejects private repositories, truncated trees, symlinks, and submodules. Only the tree and root package metadata are retrieved; the importer never writes to GitHub.
+
 ## Command execution
 
 The client sends approved command IDs such as `run-tests`, never shell text. The server maps each ID to a fixed argv array, uses timeouts, limits output, records a safe summary, and rejects chaining, package installation, outbound tools, destructive database operations, and unknown commands.

@@ -17,6 +17,7 @@ Developers often practice incident response for the first time during a real out
 - IDE-style investigation workspace with editable code, logs, test results, database comparison, service health, hypotheses, hints, and timeline.
 - Public tests, hidden behavioral checks, unsafe-patch scanning, scoring, and Markdown after-action reports.
 - Deterministic fallback mode that needs neither an OpenAI key nor a private repository.
+- Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
 
 ## Architecture
 
@@ -104,10 +105,14 @@ npm run demo:verify
 npm run sandbox:cleanup
 ```
 
+## GitHub import
+
+Open **Repositories** and enter a canonical public URL such as `https://github.com/owner/repository`. RepoRehearsal reads the public repository metadata, recursive tree, and root `package.json`, then deterministically detects TypeScript, Express, Prisma, and the test framework. It does not write to, fork, or modify the source. `GITHUB_TOKEN` is optional and only raises GitHub API rate limits; private repository access remains disabled.
+
 ## Known limitations
 
 - The runnable hackathon environment uses in-process seeded state because Docker and PostgreSQL are unavailable here.
-- ZIP execution, authentication, GitHub import, multi-user persistence, and arbitrary repositories are not enabled in the hosted demo.
+- ZIP execution, private GitHub imports, authentication, multi-user persistence, and arbitrary repository execution are not enabled in the hosted demo.
 - The workspace editor is a focused textarea implementation rather than Monaco.
 - Secondary templates use the shared deterministic workflow; the database migration path is the most polished.
 

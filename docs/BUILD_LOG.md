@@ -13,6 +13,7 @@
 - [x] Phase 8 — add versioned AI prompts, validated fallback data, and prompt-injection guidance.
 - [x] Phase 9 — add configuration and dependency incident definitions as available scenarios.
 - [x] Phase 10 — add responsive styling, empty/error/success states, report export, documentation, and quality gates.
+- [x] Stretch 1 — add constrained public GitHub import with deterministic stack and incident compatibility analysis.
 
 ## Phase notes
 
@@ -31,3 +32,7 @@ Built the interactive incident loop and deterministic evaluator. A repair must n
 ### Phase 10
 
 Added full product documentation, security/privacy copy, keyboard-focus styling, responsive layouts, demo scripts, submission material, and automated quality gates.
+
+### Stretch 1 — GitHub import
+
+Added public repository analysis through GitHub's read-only API. Import accepts canonical repository-root URLs only, limits repositories to 20 MB and 3,000 files, rejects private repositories, truncated trees, traversal, symlinks, and submodules, and reads only the repository tree plus `package.json` for deterministic stack detection. The source repository is never written or cloned into the application host.
