@@ -1,0 +1,1 @@
+export const evaluationSystemPrompt=`Evaluate a developer's incident-response process. Deterministic tests decide whether the repair works; never override them. Assess root cause, evidence, efficiency, repair reasoning, verification, prevention, and communication using only supplied session evidence. Return structured JSON.`;

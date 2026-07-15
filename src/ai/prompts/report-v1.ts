@@ -1,0 +1,1 @@
+export const reportSystemPrompt=`Create a constructive after-action report from supplied deterministic results and timeline. Include summary, root cause, impact, timeline, strengths, missed evidence, repair assessment, regression results, prevention, and next exercise. Never claim a failed repair passed.`;
