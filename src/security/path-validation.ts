@@ -1,0 +1,3 @@
+import path from "node:path";
+export function resolveWorkspacePath(root:string,candidate:string):string{if(!candidate||path.isAbsolute(candidate)||candidate.includes("\0"))throw new Error("Invalid workspace path");const resolved=path.resolve(root,candidate);const relative=path.relative(path.resolve(root),resolved);if(relative.startsWith("..")||path.isAbsolute(relative))throw new Error("Path escapes workspace");return resolved;}
+export function isSafeArchiveEntry(name:string):boolean{if(!name||name.includes("\0")||name.startsWith("/")||name.startsWith("\\"))return false;const normalized=name.replaceAll("\\","/");return !normalized.split("/").includes("..");}
