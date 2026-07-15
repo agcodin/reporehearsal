@@ -18,6 +18,8 @@ Developers often practice incident response for the first time during a real out
 - Public tests, hidden behavioral checks, unsafe-patch scanning, scoring, and Markdown after-action reports.
 - Deterministic fallback mode that needs neither an OpenAI key nor a private repository.
 - Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
+- ChatGPT sign-in with persistent account profiles, rehearsal preferences, saved results, and real empty/history states.
+- Interview mode with a visible countdown, disabled coaching, and interviewer-focused reporting.
 
 ## Architecture
 
@@ -67,9 +69,9 @@ docker compose -f demo-repositories/billing-service/docker-compose.yml up --buil
 
 Copy `.env.example`. `OPENAI_API_KEY` is optional. `OPENAI_MODEL` is read from configuration rather than hardcoded in product services. Sandbox limits default to 45 minutes, 1 CPU, and 1 GB memory. Never commit `.env`.
 
-## Demo mode
+## Accounts and demo mode
 
-No credentials are required. The seeded persona is **Maya Chen**, and historical sessions are preloaded in the dashboard. `DEMO_MODE=true` enables template summaries, hints, scoring, and reports without an API call.
+No credentials are required to view public pages or complete the built-in incident locally. Sign in with ChatGPT to create a persistent account, save rehearsal results, set default modes and time limits, and build a personal readiness history. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal. `DEMO_MODE=true` enables template summaries, hints, scoring, and reports without an OpenAI API call.
 
 ## How fault injection works
 
@@ -109,10 +111,14 @@ npm run sandbox:cleanup
 
 Open **Repositories** and enter a canonical public URL such as `https://github.com/owner/repository`. RepoRehearsal reads the public repository metadata, recursive tree, and root `package.json`, then deterministically detects TypeScript, Express, Prisma, and the test framework. It does not write to, fork, or modify the source. `GITHUB_TOKEN` is optional and only raises GitHub API rate limits; private repository access remains disabled.
 
+## Interview mode
+
+Choose **Interview mode** while configuring a rehearsal. The workspace displays a countdown, disables coaching hints, records the result to the signed-in account, and changes the after-action report to an interviewer-oriented assessment of evidence use, verification, and communication.
+
 ## Known limitations
 
 - The runnable hackathon environment uses in-process seeded state because Docker and PostgreSQL are unavailable here.
-- ZIP execution, private GitHub imports, authentication, multi-user persistence, and arbitrary repository execution are not enabled in the hosted demo.
+- ZIP execution, private GitHub imports, external identity providers, and arbitrary repository execution are not enabled in the hosted demo.
 - The workspace editor is a focused textarea implementation rather than Monaco.
 - Secondary templates use the shared deterministic workflow; the database migration path is the most polished.
 

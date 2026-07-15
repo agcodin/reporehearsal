@@ -4,6 +4,10 @@
 
 Every session works on a copied repository with a unique ID and maximum lifetime. Production containers must run without privilege, host mounts, or Docker socket access; outbound networking is denied, and CPU/memory limits are mandatory. The local demo adapter preserves path, command, expiry, event, and validation boundaries without presenting itself as a public arbitrary-code sandbox.
 
+## Authentication and account data
+
+Protected pages and account APIs use dispatch-owned Sign in with ChatGPT. Identity is read from trusted forwarded headers on the server; client-supplied email or account IDs are never accepted for authorization. Passwords and provider tokens are not handled by RepoRehearsal. D1 rows are owned through the authenticated email-derived account, and writes use prepared statements. Profiles retain identity, preferences, and rehearsal result summaries only.
+
 ## Upload safety
 
 Archive entries are rejected when they contain absolute paths, parent traversal, null bytes, symlinks, nested archives, unsupported binaries, excessive file counts, or excessive expanded size. Extraction must create files only beneath a newly allocated workspace and must not follow links.

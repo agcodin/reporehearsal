@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
+import AuthNavigation from "./components/AuthNavigation";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-sans", subsets: ["latin"] });
@@ -12,6 +14,8 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg" },
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -21,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav aria-label="Primary navigation">
             <Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/about">About</Link>
           </nav>
-          <Link className="button button-dark button-small" href="/rehearsals/new">Start rehearsal <span aria-hidden>↗</span></Link>
+          <Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense>
         </header>
         {children}
         <footer><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Original repositories are never modified.</p><div><Link href="/privacy">Privacy</Link> · <Link href="/about">How it works</Link></div></footer>

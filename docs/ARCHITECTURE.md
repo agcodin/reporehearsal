@@ -1,6 +1,6 @@
 # RepoRehearsal architecture
 
-RepoRehearsal is a Next.js App Router application deployed through the Sites-compatible Vinext runtime. The hackathon build uses a deterministic in-process demonstration adapter because Docker and PostgreSQL are unavailable in this environment. The adapter implements the same boundaries as the planned Docker adapter: immutable source, per-session copied workspaces, approved command IDs, path containment, expiration, evidence recording, deterministic fault injection, and hidden validation.
+RepoRehearsal is a Next.js App Router application deployed through the Sites-compatible Vinext runtime. Dispatch-owned ChatGPT sign-in identifies users, and D1 stores profiles, preferences, and user-owned rehearsal summaries. The hackathon build uses a deterministic in-process demonstration adapter because Docker and PostgreSQL are unavailable in this environment. The adapter implements the same boundaries as the planned Docker adapter: immutable source, per-session copied workspaces, approved command IDs, path containment, expiration, evidence recording, deterministic fault injection, and hidden validation.
 
 ```mermaid
 flowchart LR
@@ -13,6 +13,8 @@ flowchart LR
   Validate --> Score[Deterministic scoring]
   Score --> Report[Template report / GPT enhancement]
   Analyzer[Deterministic repository analyzer] --> Sessions
+  Auth[ChatGPT sign-in] --> Sessions
+  Sessions --> D1[Profiles + rehearsal history]
 ```
 
 ## Trust boundaries

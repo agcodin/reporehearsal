@@ -14,6 +14,8 @@
 - [x] Phase 9 — add configuration and dependency incident definitions as available scenarios.
 - [x] Phase 10 — add responsive styling, empty/error/success states, report export, documentation, and quality gates.
 - [x] Stretch 1 — add constrained public GitHub import with deterministic stack and incident compatibility analysis.
+- [x] Accounts — replace the seeded persona with authenticated profiles, persistent preferences, and user-owned rehearsal history.
+- [x] Stretch 2 — add timed Interview mode with coaching disabled and interviewer-focused reporting.
 
 ## Phase notes
 
@@ -36,3 +38,7 @@ Added full product documentation, security/privacy copy, keyboard-focus styling,
 ### Stretch 1 — GitHub import
 
 Added public repository analysis through GitHub's read-only API. Import accepts canonical repository-root URLs only, limits repositories to 20 MB and 3,000 files, rejects private repositories, truncated trees, traversal, symlinks, and submodules, and reads only the repository tree plus `package.json` for deterministic stack detection. The source repository is never written or cloned into the application host.
+
+### Accounts and Interview mode
+
+Replaced the static Maya persona and seeded score history with dispatch-owned ChatGPT sign-in and D1-backed accounts. Profiles store only identity, rehearsal defaults, and result summaries. Dashboard metrics are calculated from user-owned sessions and show a truthful empty state for new accounts. Interview mode adds a real countdown, disables the hint ladder, persists outcomes, and produces an interviewer-focused assessment.
