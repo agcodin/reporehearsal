@@ -18,7 +18,8 @@ Developers often practice incident response for the first time during a real out
 - Public tests, hidden behavioral checks, unsafe-patch scanning, scoring, and Markdown after-action reports.
 - Deterministic fallback mode that needs neither an OpenAI key nor a private repository.
 - Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
-- ChatGPT sign-in with persistent account profiles, rehearsal preferences, saved results, and real empty/history states.
+- Local folder and ZIP analysis with traversal, expansion, file-count, secret, binary, and generated-file controls.
+- Optional ChatGPT sign-in with persistent account profiles, rehearsal preferences, saved results, saved repository metadata, and real empty/history states.
 - Interview mode with a visible countdown, disabled coaching, and interviewer-focused reporting.
 
 ## Architecture
@@ -44,7 +45,7 @@ The current environment lacks Docker and PostgreSQL, so the included runnable de
 - Product: Next.js App Router, React, TypeScript, Tailwind CSS, Zod, Prisma schema, Vitest, Playwright.
 - Demo repository: Express, TypeScript, PostgreSQL, Prisma, Docker Compose, Vitest.
 - Full support: built-in billing demo and deterministic local incident loop.
-- Upload support: UI and security policies are present; hosted archive execution remains a documented limitation.
+- Upload support: public folder and ZIP analysis for supported text-based repositories. Arbitrary uploaded code is not executed on the web worker.
 
 ## Local setup
 
@@ -71,7 +72,7 @@ Copy `.env.example`. `OPENAI_API_KEY` is optional. `OPENAI_MODEL` is read from c
 
 ## Accounts and demo mode
 
-No credentials are required to view public pages or complete the built-in incident locally. Sign in with ChatGPT to create a persistent account, save rehearsal results, set default modes and time limits, and build a personal readiness history. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal. `DEMO_MODE=true` enables template summaries, hints, scoring, and reports without an OpenAI API call.
+No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Sign in with ChatGPT to create a persistent account, save rehearsal results, set default modes and time limits, retain repository metadata, and build a personal readiness history. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal. `DEMO_MODE=true` enables template summaries, hints, scoring, and reports without an OpenAI API call.
 
 ## How fault injection works
 
@@ -111,6 +112,10 @@ npm run sandbox:cleanup
 
 Open **Repositories** and enter a canonical public URL such as `https://github.com/owner/repository`. RepoRehearsal reads the public repository metadata, recursive tree, and root `package.json`, then deterministically detects TypeScript, Express, Prisma, and the test framework. It does not write to, fork, or modify the source. `GITHUB_TOKEN` is optional and only raises GitHub API rate limits; private repository access remains disabled.
 
+## Local uploads
+
+Open **Repositories** and select either a project folder or a ZIP archive. The request is limited to 20 MB expanded and 3,000 files. RepoRehearsal analyzes supported text source/configuration files in memory, rejects unsafe paths, and excludes generated directories, environment files, private keys, credential files, binaries, and oversized files. Signed-in users retain only the analysis metadata on their dashboard; repository contents are not stored in the account profile.
+
 ## Interview mode
 
 Choose **Interview mode** while configuring a rehearsal. The workspace displays a countdown, disables coaching hints, records the result to the signed-in account, and changes the after-action report to an interviewer-oriented assessment of evidence use, verification, and communication.
@@ -118,13 +123,13 @@ Choose **Interview mode** while configuring a rehearsal. The workspace displays 
 ## Known limitations
 
 - The runnable hackathon environment uses in-process seeded state because Docker and PostgreSQL are unavailable here.
-- ZIP execution, private GitHub imports, external identity providers, and arbitrary repository execution are not enabled in the hosted demo.
+- Private GitHub imports, Google/GitHub identity providers, and arbitrary repository execution are not enabled by the current Sites hosting authentication surface.
 - The workspace editor is a focused textarea implementation rather than Monaco.
 - Secondary templates use the shared deterministic workflow; the database migration path is the most polished.
 
 ## Future work
 
-GitHub import, organization-specific templates, team incident rooms, Kubernetes scenarios, runbook validation, interview mode, progression analytics, and additional language adapters.
+Authorized private GitHub connections, additional identity providers, organization-specific templates, team incident rooms, Kubernetes scenarios, runbook validation, progression analytics, and additional language adapters.
 
 ## Screenshots and demo
 

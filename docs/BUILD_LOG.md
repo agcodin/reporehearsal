@@ -16,6 +16,7 @@
 - [x] Stretch 1 — add constrained public GitHub import with deterministic stack and incident compatibility analysis.
 - [x] Accounts — replace the seeded persona with authenticated profiles, persistent preferences, and user-owned rehearsal history.
 - [x] Stretch 2 — add timed Interview mode with coaching disabled and interviewer-focused reporting.
+- [x] Public intake — make accounts optional, add a dedicated account entry page, local folder/ZIP analysis, and account-owned repository metadata.
 
 ## Phase notes
 
@@ -42,3 +43,7 @@ Added public repository analysis through GitHub's read-only API. Import accepts 
 ### Accounts and Interview mode
 
 Replaced the static Maya persona and seeded score history with dispatch-owned ChatGPT sign-in and D1-backed accounts. Profiles store only identity, rehearsal defaults, and result summaries. Dashboard metrics are calculated from user-owned sessions and show a truthful empty state for new accounts. Interview mode adds a real countdown, disables the hint ladder, persists outcomes, and produces an interviewer-focused assessment.
+
+### Public repository intake
+
+Kept the landing page, demo, public GitHub import, local upload, and rehearsal setup public while protecting only account-specific pages and writes. Added a dedicated optional-account entry page. Local folder and ZIP uploads are analyzed without filesystem extraction; path traversal, decompression expansion, file count, individual file size, secrets, keys, binaries, and generated directories are bounded or excluded. Signed-in users retain repository analysis metadata in D1, while repository contents remain outside the account profile. Google and GitHub identity buttons were not fabricated because the current Sites authentication surface exposes dispatch-owned ChatGPT sign-in but no external OAuth provider configuration.

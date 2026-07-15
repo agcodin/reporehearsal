@@ -32,7 +32,7 @@ describe("GitHub repository import", () => {
 
   it("maps a supported stack and compatible incident templates", async () => {
     const result = await importPublicGitHubRepository("https://github.com/acme/billing-api", { fetcher: successfulFetcher });
-    expect(result.stack).toEqual({ language: "TypeScript", framework: "Express", database: "PostgreSQL", orm: "Prisma", testFramework: "Vitest" });
+    expect(result.stack).toEqual({ language: "TypeScript", framework: "Express", database: "PostgreSQL", orm: "Prisma", testFramework: "Vitest", packageManager: "unknown" });
     expect(result.compatibleIncidentIds).toEqual(["db-required-field-migration-v1", "container-host-config-v1", "provider-schema-drift-v1"]);
     expect(result.fileCount).toBe(4);
   });

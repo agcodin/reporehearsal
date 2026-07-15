@@ -23,7 +23,7 @@ export type GitHubRepositoryRef = { owner: string; repository: string; fullName:
 export type GitHubImportResult = {
   id: string; name: string; fullName: string; description: string | null; sourceUrl: string; defaultBranch: string;
   stars: number; updatedAt: string; fileCount: number; repositorySizeKb: number;
-  stack: { language: "TypeScript" | "JavaScript" | "unknown"; framework: "Express" | "unknown"; database: "PostgreSQL" | "unknown"; orm: "Prisma" | "unknown"; testFramework: "Vitest" | "Jest" | "unknown" };
+  stack: { language: "TypeScript" | "JavaScript" | "unknown"; framework: "Express" | "unknown"; database: "PostgreSQL" | "unknown"; orm: "Prisma" | "unknown"; testFramework: "Vitest" | "Jest" | "unknown"; packageManager: "npm" | "pnpm" | "Yarn" | "unknown" };
   compatibleIncidentIds: string[]; detectedFiles: string[]; warnings: string[];
 };
 
@@ -103,12 +103,13 @@ export async function importPublicGitHubRepository(value: string, options: { fet
   const hasTypeScript = paths.some(path => path.endsWith(".ts") || path.endsWith(".tsx")) || "typescript" in dependencies;
   const hasExpress = "express" in dependencies;
   const testFramework = "vitest" in dependencies ? "Vitest" as const : ("jest" in dependencies ? "Jest" as const : "unknown" as const);
+  const packageManager = paths.includes("pnpm-lock.yaml") ? "pnpm" as const : paths.includes("yarn.lock") ? "Yarn" as const : paths.includes("package-lock.json") ? "npm" as const : "unknown" as const;
   const compatibleIncidentIds = [...(hasTypeScript && hasExpress && hasPrisma ? ["db-required-field-migration-v1"] : []), ...(hasTypeScript ? ["container-host-config-v1", "provider-schema-drift-v1"] : [])];
   return {
     id: `github-${ref.owner.toLowerCase()}-${ref.repository.toLowerCase()}`, name: repository.name, fullName: repository.full_name,
     description: repository.description, sourceUrl: repository.html_url, defaultBranch: repository.default_branch, stars: repository.stargazers_count,
     updatedAt: repository.updated_at, fileCount: files.length, repositorySizeKb: repository.size,
-    stack: { language: hasTypeScript ? "TypeScript" : (repository.language === "JavaScript" ? "JavaScript" : "unknown"), framework: hasExpress ? "Express" : "unknown", database: hasPrisma ? "PostgreSQL" : "unknown", orm: hasPrisma ? "Prisma" : "unknown", testFramework },
+    stack: { language: hasTypeScript ? "TypeScript" : (repository.language === "JavaScript" ? "JavaScript" : "unknown"), framework: hasExpress ? "Express" : "unknown", database: hasPrisma ? "PostgreSQL" : "unknown", orm: hasPrisma ? "Prisma" : "unknown", testFramework, packageManager },
     compatibleIncidentIds, detectedFiles: paths.filter(path => /(?:package\.json|schema\.prisma|docker-compose|Dockerfile|\.test\.[jt]sx?$|migration\.sql$)/.test(path)).slice(0, 20),
     warnings: repository.fork ? ["This repository is a fork; analysis uses its current default branch."] : [],
   };

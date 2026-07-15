@@ -6,11 +6,11 @@ Every session works on a copied repository with a unique ID and maximum lifetime
 
 ## Authentication and account data
 
-Protected pages and account APIs use dispatch-owned Sign in with ChatGPT. Identity is read from trusted forwarded headers on the server; client-supplied email or account IDs are never accepted for authorization. Passwords and provider tokens are not handled by RepoRehearsal. D1 rows are owned through the authenticated email-derived account, and writes use prepared statements. Profiles retain identity, preferences, and rehearsal result summaries only.
+Public product and repository-intake routes do not require an account. Protected pages and account APIs use dispatch-owned Sign in with ChatGPT. Identity is read from trusted forwarded headers on the server; client-supplied email or account IDs are never accepted for authorization. Passwords and provider tokens are not handled by RepoRehearsal. D1 rows are owned through the authenticated email-derived account, and writes use prepared statements. Profiles retain identity, preferences, rehearsal result summaries, and repository analysis metadata only.
 
 ## Upload safety
 
-Archive entries are rejected when they contain absolute paths, parent traversal, null bytes, symlinks, nested archives, unsupported binaries, excessive file counts, or excessive expanded size. Extraction must create files only beneath a newly allocated workspace and must not follow links.
+Folder and ZIP uploads are limited to 20 MB expanded, 3,000 files, and 1 MB per analyzed text file. Absolute paths, parent traversal, and null bytes are rejected. Environment files, keys, credential files, generated directories, nested archives, binaries, and unsupported file types are excluded. ZIP data is decoded in memory for deterministic analysis and is never extracted into the worker filesystem, so archive links cannot be followed. Only non-content repository metadata is attached to a signed-in account.
 
 Public GitHub import accepts only canonical `https://github.com/owner/repository` URLs, uses fixed `api.github.com` endpoints derived from validated owner/repository segments, limits size and file count, and rejects private repositories, truncated trees, symlinks, and submodules. Only the tree and root package metadata are retrieved; the importer never writes to GitHub.
 
