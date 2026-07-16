@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireChatGPTUser } from "../chatgpt-auth";
+import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
 import { getAccountDashboard } from "../../src/accounts/account-service";
 
 export const dynamic = "force-dynamic";
 function metric(value: number | null, suffix = "") { return value === null ? "—" : `${value}${suffix}`; }
 
 async function DashboardContent() {
-  const user = await requireChatGPTUser("/dashboard");
+  const user = await getChatGPTUser();
+  if (!user) {
+    return <main className="app-page">
+      <div className="page-title-row"><div><p className="eyebrow">OPTIONAL ACCOUNT</p><h1>Your incident readiness</h1><p>Practice cases stay public. Sign in only when you want a personal history, saved repositories, and reusable preferences.</p></div><Link className="button button-dark" href={chatGPTSignInPath("/dashboard")}>Sign in to your dashboard →</Link></div>
+      <div className="account-grid">
+        <section className="panel empty-state"><span className="step-icon">01</span><h2>No account required to practice</h2><p>Try any of the four incident cases without creating an account. Your personal scores and activity appear here after you sign in.</p><Link className="button button-blue" href="/rehearsals/new">Choose a practice case →</Link></section>
+        <aside className="panel repository-safety-card"><span className="panel-label">BRING YOUR OWN CODE</span><h2>Use a repository publicly</h2><p>Paste a public GitHub URL or upload a codebase from your computer. Anonymous snapshots are temporary and the original repository is never modified.</p><Link className="text-link" href="/repositories">Open repository options →</Link></aside>
+      </div>
+    </main>;
+  }
   const data = await getAccountDashboard(user.email, user.displayName);
   const firstName = user.fullName?.split(" ")[0] ?? user.email.split("@")[0];
   return <main className="app-page">

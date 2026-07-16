@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import AuthNavigation from "./components/AuthNavigation";
+import PlanNavigation from "./components/PlanNavigation";
+import PlanProvider from "./components/PlanProvider";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-sans", subsets: ["latin"] });
@@ -20,15 +22,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geist.variable} ${mono.variable}`}>
+        <PlanProvider>
         <header className="site-header">
           <Link className="brand" href="/" aria-label="RepoRehearsal home"><span className="brand-mark">RR</span><span>RepoRehearsal</span></Link>
           <nav aria-label="Primary navigation">
-            <Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/about">About</Link>
+            <Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/about">About</Link>
           </nav>
-          <Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense>
+          <div className="header-actions"><PlanNavigation /><Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense></div>
         </header>
         {children}
-        <footer><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Original repositories are never modified.</p><div><Link href="/privacy">Privacy</Link> · <Link href="/about">How it works</Link></div></footer>
+        <footer><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Original repositories are never modified.</p><div><Link href="/pricing">Pricing</Link> · <Link href="/privacy">Privacy</Link> · <Link href="/about">How it works</Link></div></footer>
+        </PlanProvider>
       </body>
     </html>
   );

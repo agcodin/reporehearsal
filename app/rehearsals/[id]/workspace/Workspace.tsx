@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import CodeEditor from "../../../components/CodeEditor";
 
 type Tab = "terminal" | "logs" | "tests" | "database" | "health";
 type Timeline = { type: string; timestamp: string; summary: string };
@@ -48,9 +49,9 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
     let active = true;
     async function load() {
       try {
-        const [sessionData, fileData, evidenceData] = await Promise.all([
-          api(`/api/rehearsals/${sessionId}`), api(`/api/rehearsals/${sessionId}/files`), api(`/api/rehearsals/${sessionId}/evidence`),
-        ]);
+        const sessionData = await api(`/api/rehearsals/${sessionId}`);
+        const fileData = await api(`/api/rehearsals/${sessionId}/files`);
+        const evidenceData = await api(`/api/rehearsals/${sessionId}/evidence`);
         if (!active) return;
         if (sessionData.session.status === "COMPLETED") { router.replace(`/rehearsals/${sessionId}/report`); return; }
         if (sessionData.session.status !== "ACTIVE") { router.replace(`/rehearsals/${sessionId}/preparing`); return; }
@@ -122,7 +123,7 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
     {error && <div className="error-banner" role="alert">{error}</div>}
     <div className="workspace-grid">
       <aside className="file-panel"><div className="panel-head">EXPLORER · {session.repositoryName.toUpperCase()}</div><div className="file-tree">{files.map(file => <button className={path === file ? "active-file" : ""} onClick={() => void openFile(file)} key={file}>{file}</button>)}</div></aside>
-      <section className="editor-zone"><div className="code-editor"><div className="editor-toolbar"><span>{path}</span><i>{source === savedSource ? "saved to session" : "unsaved changes"}</i><button className="button button-ghost button-small" onClick={save} disabled={source === savedSource || Boolean(busy)}>{busy === "save" ? "Saving…" : "Save"}</button></div><textarea aria-label="Code editor" spellCheck={false} value={source} onChange={event => setSource(event.target.value)} /></div><div className="bottom-console"><div className="tabs">{(["terminal", "logs", "tests", "database", "health"] as Tab[]).map(item => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item.toUpperCase()}</button>)}</div><div className="console-body">{consoleText}</div></div></section>
+      <section className="editor-zone"><div className="code-editor"><div className="editor-toolbar"><span className="editor-tab"><i className="ts-file-icon">{path.split(".").pop()?.slice(0, 3).toUpperCase() ?? "TXT"}</i>{path}</span><em>{source === savedSource ? "saved" : "● unsaved"}</em><button className="button button-ghost button-small" onClick={save} disabled={source === savedSource || Boolean(busy)}>{busy === "save" ? "Saving…" : "Save · ⌘S"}</button></div><CodeEditor path={path} value={source} onChange={setSource} onSave={() => void save()} /></div><div className="bottom-console"><div className="tabs">{(["terminal", "logs", "tests", "database", "health"] as Tab[]).map(item => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item.toUpperCase()}</button>)}</div><div className="console-body">{consoleText}</div></div></section>
       <aside className="side-panel"><div className="brief"><span className="badge badge-red">{evidence.briefing.severity}</span><h2>{evidence.briefing.title}</h2><p>{evidence.briefing.customerReport}</p><p><b>Impact</b></p><ul>{evidence.briefing.knownImpact.map(item => <li key={item}>{item}</li>)}</ul></div>
         <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>INVESTIGATION TOOLS</div><button className="button button-ghost button-small" onClick={() => { setTab("logs"); setConsoleText(evidence.logs.join("\n")); }}>Inspect incident logs</button><button className="button button-ghost button-small" onClick={showDatabase}>Compare affected records</button><button className="button button-ghost button-small" onClick={() => command("migration-status", "terminal")}>Inspect dependency state</button><button className="button button-ghost button-small" onClick={() => command("run-tests", "tests")}>Run incident tests</button><button className="button button-ghost button-small" onClick={() => command("check-health", "health")}>Check service health</button></div>
         <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>HYPOTHESES</div>{session.hypotheses.map((item, index) => <div className="hint-box" key={`${item}-${index}`}>{item}</div>)}<textarea rows={3} value={hypothesis} onChange={event => setHypothesis(event.target.value)} aria-label="Investigation hypothesis" placeholder="State your belief and supporting evidence" /><button className="button button-ghost button-small" onClick={addHypothesis} disabled={busy === "hypothesis"}>Add hypothesis</button></div>

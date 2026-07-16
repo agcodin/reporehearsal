@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePlan } from "../../../components/PlanProvider";
 
 type Check = { name: string; status: "passed" | "failed"; hidden?: boolean; detail: string };
 type Breakdown = { label: string; earned: number; possible: number };
@@ -9,6 +10,7 @@ type Validation = { score: number; passed: boolean; checks: Check[]; breakdown: 
 type ReportData = { title: string; rootCause: string; summary: string; evidenceUsed: string[]; missedEvidence: string[]; prevention: string[]; score: number; passed: boolean; markdown: string; aiEnhanced: boolean };
 
 export default function Report({ sessionId }: { sessionId: string }) {
+  const { includes, activate } = usePlan();
   const [report, setReport] = useState<ReportData | null>(null);
   const [validation, setValidation] = useState<Validation | null>(null);
   const [error, setError] = useState("");
@@ -37,7 +39,7 @@ export default function Report({ sessionId }: { sessionId: string }) {
     <div className="report-body"><div><section className="report-section"><h2>Root cause</h2><p>{report.rootCause}</p><div className="callout"><b>Outcome</b><p>{report.passed ? "The submitted workspace passed every required deterministic check." : "One or more required checks failed. Reopen a new rehearsal and repair the underlying cause."}</p></div></section>
       <section className="report-section"><h2>Deterministic validation</h2>{validation.checks.map(check => <div className="check-row" key={check.name}><span>{check.status === "passed" ? "✓" : "×"}</span><div><b>{check.name} {check.hidden && <small>· HIDDEN</small>}</b><p>{check.detail}</p></div></div>)}</section>
       <section className="report-section"><h2>Prevention measures</h2><ol>{report.prevention.map(item => <li key={item}>{item}</li>)}</ol></section></div>
-      <aside><section className="report-section"><h2>Investigation review</h2><p><b>Evidence used</b></p>{report.evidenceUsed.length ? <ul>{report.evidenceUsed.map(item => <li key={item}>{item}</li>)}</ul> : <p>No investigation evidence was recorded.</p>}<p><b>Missed evidence</b></p>{report.missedEvidence.length ? <ul>{report.missedEvidence.map(item => <li key={item}>{item}</li>)}</ul> : <p>No material evidence gaps identified.</p>}</section><section className="report-section"><h2>Recommended next</h2><p>Run another incident category or repeat this scenario without coaching to strengthen independent diagnosis.</p><Link className="button button-dark" href="/rehearsals/new">Choose next exercise →</Link></section><button className="button button-ghost" style={{ width: "100%" }} onClick={download}>Export Markdown ↓</button></aside>
+      <aside><section className="report-section"><h2>Investigation review</h2><p><b>Evidence used</b></p>{report.evidenceUsed.length ? <ul>{report.evidenceUsed.map(item => <li key={item}>{item}</li>)}</ul> : <p>No investigation evidence was recorded.</p>}<p><b>Missed evidence</b></p>{report.missedEvidence.length ? <ul>{report.missedEvidence.map(item => <li key={item}>{item}</li>)}</ul> : <p>No material evidence gaps identified.</p>}</section>{includes("PRO") ? <section className="report-section advanced-report"><span className="badge badge-blue">PRO ANALYSIS</span><h2>Skill signal</h2>{validation.breakdown.map(item => { const percent = Math.round(item.earned / item.possible * 100); return <div className="report-skill" key={item.label}><div><b>{item.label}</b><span>{percent}%</span></div><div className="skill-bar"><span style={{ width: `${percent}%` }} /></div></div>; })}<p><b>Coaching focus</b><br />{report.missedEvidence.length ? "Build the evidence trail before editing, then verify the repair against the original customer impact." : "Your evidence trail was complete. Repeat under interview conditions to test independent communication."}</p></section> : <section className="report-section advanced-report locked"><span className="badge badge-blue">PRO ANALYSIS</span><h2>See the skill behind the score</h2><p>Activate the Pro preview for detailed skill signals and coaching focus. No payment details required.</p><button className="button button-blue" onClick={() => activate("PRO")}>Activate Pro preview →</button></section>}<section className="report-section"><h2>Recommended next</h2><p>Run another incident category or repeat this scenario without coaching to strengthen independent diagnosis.</p><Link className="button button-dark" href="/rehearsals/new">Choose next exercise →</Link></section><button className="button button-ghost" style={{ width: "100%" }} onClick={download}>Export Markdown ↓</button></aside>
     </div>
   </main>;
 }
