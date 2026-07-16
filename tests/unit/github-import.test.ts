@@ -42,6 +42,13 @@ describe("GitHub repository import", () => {
     await expect(importPublicGitHubRepository("https://github.com/acme/billing-api", { fetcher })).rejects.toMatchObject({ code: "REPOSITORY_TOO_LARGE", status: 413 });
   });
 
+  it("accepts a repository when the selected tier raises its import budget", async () => {
+    const biggerMetadata = { ...metadata, size: 30_000 };
+    const fetcher = (input: string | URL | Request) => String(input).includes("/git/trees/") ? json(tree) : String(input).includes("/contents/package.json") ? json({ type: "file", encoding: "base64", content: Buffer.from(packageJson).toString("base64"), size: packageJson.length }) : json(biggerMetadata);
+    const result = await importPublicGitHubRepository("https://github.com/acme/billing-api", { fetcher, limits: { repositoryUploadBytes: 50 * 1024 * 1024, repositoryFiles: 7_500, maxTextFileBytes: 2 * 1024 * 1024 } });
+    expect(result.repositorySizeKb).toBe(30_000);
+  });
+
   it("rejects symbolic links and submodules", async () => {
     const fetcher = (input: string | URL | Request) => String(input).includes("/git/trees/") ? json({ truncated: false, tree: [{ path: "escape", mode: "120000", type: "blob", size: 8 }] }) : json(metadata);
     await expect(importPublicGitHubRepository("https://github.com/acme/billing-api", { fetcher })).rejects.toMatchObject({ code: "UNSUPPORTED_LINK" });

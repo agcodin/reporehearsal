@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="header-actions"><PlanNavigation /><Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense></div>
         </header>
         {children}
-        <footer><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Original repositories are never modified.</p><div><Link href="/pricing">Pricing</Link> · <Link href="/privacy">Privacy</Link> · <Link href="/about">How it works</Link></div></footer>
+        <footer><div className="footer-brand"><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Practice production judgment in a safe, isolated copy of real code.</p></div><div className="footer-status"><span className="pulse" /><div><b>SAFETY BOUNDARY ACTIVE</b><small>Original repositories are never modified.</small></div></div><nav className="footer-nav" aria-label="Footer navigation"><div><b>PRODUCT</b><Link href="/rehearsals/new">Practice cases</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link></div><div><b>COMPANY</b><Link href="/about">How it works</Link><Link href="/privacy">Security & privacy</Link><Link href="/signin">Account</Link></div></nav></footer>
         </PlanProvider>
       </body>
     </html>

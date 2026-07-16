@@ -11,7 +11,16 @@ export type Plan = {
   href: string;
   featured?: boolean;
   features: string[];
+  limits: PlanLimits;
 };
+
+export type PlanLimits = {
+  repositoryUploadBytes: number;
+  repositoryFiles: number;
+  maxTextFileBytes: number;
+};
+
+const MB = 1024 * 1024;
 
 export const plans: Plan[] = [
   {
@@ -23,7 +32,8 @@ export const plans: Plan[] = [
     description: "Learn the incident workflow with public cases and temporary codebase analysis.",
     cta: "Use Free",
     href: "/rehearsals/new",
-    features: ["Four production-style incidents", "Public GitHub and local uploads", "Deterministic validation", "Basic after-action report"],
+    features: ["Four production-style incidents", "20 MB repository analysis", "Public GitHub and local uploads", "Deterministic validation", "Basic after-action report"],
+    limits: { repositoryUploadBytes: 20 * MB, repositoryFiles: 3_000, maxTextFileBytes: 1 * MB },
   },
   {
     id: "PRO",
@@ -35,7 +45,8 @@ export const plans: Plan[] = [
     cta: "Activate Pro preview",
     href: "/dashboard",
     featured: true,
-    features: ["Everything in Free", "Interview mode", "Advanced skill analysis", "Saved progress with ChatGPT", "Reusable repository library"],
+    features: ["Everything in Free", "50 MB repository analysis", "Interview mode", "Advanced skill analysis", "Saved progress with ChatGPT", "Reusable repository library"],
+    limits: { repositoryUploadBytes: 50 * MB, repositoryFiles: 7_500, maxTextFileBytes: 2 * MB },
   },
   {
     id: "TEAM",
@@ -46,7 +57,8 @@ export const plans: Plan[] = [
     description: "Turn incident practice into an assignable, measurable engineering program.",
     cta: "Activate Team preview",
     href: "/team",
-    features: ["Everything in Pro", "Team readiness dashboard", "Learning-path assignments", "Shared rehearsal library", "Manager reporting"],
+    features: ["Everything in Pro", "75 MB repository analysis", "Team readiness dashboard", "Learning-path assignments", "Shared rehearsal library", "Manager reporting"],
+    limits: { repositoryUploadBytes: 75 * MB, repositoryFiles: 15_000, maxTextFileBytes: 4 * MB },
   },
   {
     id: "ENTERPRISE",
@@ -57,7 +69,8 @@ export const plans: Plan[] = [
     description: "Model your own incidents and prepare teams around the systems they actually operate.",
     cta: "Activate Enterprise preview",
     href: "/enterprise",
-    features: ["Everything in Team", "Custom incident studio", "Security and retention controls", "Audit-ready exports", "Facilitated GameDay support"],
+    features: ["Everything in Team", "100 MB repository analysis", "Custom incident studio", "Security and retention controls", "Audit-ready exports", "Facilitated GameDay support"],
+    limits: { repositoryUploadBytes: 100 * MB, repositoryFiles: 30_000, maxTextFileBytes: 8 * MB },
   },
 ];
 
@@ -69,4 +82,13 @@ export function isPlanId(value: string | null): value is PlanId {
 
 export function planFor(id: PlanId) {
   return plans.find(plan => plan.id === id) ?? plans[0];
+}
+
+export function planFromRequest(request: Request) {
+  const value = request.headers.get("x-reporehearsal-plan");
+  return planFor(isPlanId(value) ? value : "FREE");
+}
+
+export function formatBytes(bytes: number) {
+  return `${Math.round(bytes / MB)} MB`;
 }

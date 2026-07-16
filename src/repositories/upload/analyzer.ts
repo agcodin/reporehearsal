@@ -2,10 +2,11 @@ import { unzipSync } from "fflate";
 import { analyzeRepository, type AnalyzableFile } from "../analyzer";
 import { isSafeArchiveEntry } from "../../security/path-validation";
 import { GENERATED_INCIDENT_ID } from "../../incidents/brain";
+import { planFor, type PlanLimits } from "../../billing/plans";
 
-export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-export const MAX_UPLOAD_FILES = 3_000;
-const MAX_TEXT_FILE_BYTES = 1_000_000;
+export const DEFAULT_UPLOAD_LIMITS = planFor("FREE").limits;
+export const MAX_UPLOAD_BYTES = DEFAULT_UPLOAD_LIMITS.repositoryUploadBytes;
+export const MAX_UPLOAD_FILES = DEFAULT_UPLOAD_LIMITS.repositoryFiles;
 const excludedDirectories = new Set([".git", ".next", "node_modules", "dist", "build", "coverage", ".turbo"]);
 const allowedExtensions = new Set([".cjs", ".css", ".env.example", ".graphql", ".html", ".js", ".json", ".jsx", ".md", ".mjs", ".prisma", ".properties", ".py", ".rb", ".rs", ".sh", ".sql", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"]);
 
@@ -53,8 +54,10 @@ function normalizeRoot(files: UploadedFile[]): UploadedFile[] {
   return files.map(file => ({ ...file, path: file.path.slice(root.length + 1) })).filter(file => file.path);
 }
 
-export function extractZipUpload(bytes: Uint8Array): { files: UploadedFile[]; fileCount: number } {
-  if (!bytes.length || bytes.length > MAX_UPLOAD_BYTES) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", "ZIP uploads must be 20 MB or smaller.", 413);
+function limitMessage(limits: PlanLimits) { return `${Math.round(limits.repositoryUploadBytes / 1024 / 1024)} MB`; }
+
+export function extractZipUpload(bytes: Uint8Array, limits: PlanLimits = DEFAULT_UPLOAD_LIMITS): { files: UploadedFile[]; fileCount: number } {
+  if (!bytes.length || bytes.length > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `ZIP uploads must be ${limitMessage(limits)} or smaller.`, 413);
   let fileCount = 0;
   let totalBytes = 0;
   try {
@@ -63,9 +66,9 @@ export function extractZipUpload(bytes: Uint8Array): { files: UploadedFile[]; fi
       if (info.name.endsWith("/")) return false;
       fileCount += 1;
       totalBytes += info.originalSize;
-      if (fileCount > MAX_UPLOAD_FILES) throw new RepositoryUploadError("TOO_MANY_FILES", "The codebase contains more than 3,000 files.", 413);
-      if (totalBytes > MAX_UPLOAD_BYTES) throw new RepositoryUploadError("EXPANDED_UPLOAD_TOO_LARGE", "The expanded codebase exceeds the 20 MB analysis limit.", 413);
-      return info.originalSize <= MAX_TEXT_FILE_BYTES && !isSensitivePath(path) && isTextCandidate(path);
+      if (fileCount > limits.repositoryFiles) throw new RepositoryUploadError("TOO_MANY_FILES", `The codebase contains more than ${limits.repositoryFiles.toLocaleString()} files.`, 413);
+      if (totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("EXPANDED_UPLOAD_TOO_LARGE", `The expanded codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
+      return info.originalSize <= limits.maxTextFileBytes && !isSensitivePath(path) && isTextCandidate(path);
     } });
     return { files: normalizeRoot(Object.entries(extracted).map(([path, file]) => ({ path: safePath(path), bytes: file }))), fileCount };
   } catch (error) {
@@ -74,16 +77,16 @@ export function extractZipUpload(bytes: Uint8Array): { files: UploadedFile[]; fi
   }
 }
 
-export function validateFolderUpload(files: UploadedFile[]): UploadedFile[] {
+export function validateFolderUpload(files: UploadedFile[], limits: PlanLimits = DEFAULT_UPLOAD_LIMITS): UploadedFile[] {
   if (!files.length) throw new RepositoryUploadError("EMPTY_UPLOAD", "Choose a folder containing source files.");
-  if (files.length > MAX_UPLOAD_FILES) throw new RepositoryUploadError("TOO_MANY_FILES", "The codebase contains more than 3,000 files.", 413);
+  if (files.length > limits.repositoryFiles) throw new RepositoryUploadError("TOO_MANY_FILES", `The codebase contains more than ${limits.repositoryFiles.toLocaleString()} files.`, 413);
   let totalBytes = 0;
   const selected: UploadedFile[] = [];
   for (const file of files) {
     const path = safePath(file.path);
     totalBytes += file.bytes.byteLength;
-    if (totalBytes > MAX_UPLOAD_BYTES) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", "The codebase exceeds the 20 MB analysis limit.", 413);
-    if (file.bytes.byteLength <= MAX_TEXT_FILE_BYTES && !isSensitivePath(path) && isTextCandidate(path)) selected.push({ path, bytes: file.bytes });
+    if (totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
+    if (file.bytes.byteLength <= limits.maxTextFileBytes && !isSensitivePath(path) && isTextCandidate(path)) selected.push({ path, bytes: file.bytes });
   }
   return normalizeRoot(selected);
 }

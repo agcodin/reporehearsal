@@ -33,4 +33,10 @@ describe("local repository uploads", () => {
     const files = validateFolderUpload([{ path: "project/logo.png", bytes: new Uint8Array([0, 1, 2]) }]);
     expect(() => analyzeUploadedFiles("Images", files, 1)).toThrowError(/No supported source/);
   });
+
+  it("enforces the active tier capacity instead of a fixed global limit", () => {
+    const files = [{ path: "project/src/index.ts", bytes: strToU8("export const ready = true") }];
+    expect(() => validateFolderUpload(files, { repositoryUploadBytes: 8, repositoryFiles: 10, maxTextFileBytes: 8 })).toThrowError(/exceeds the 0 MB analysis limit/);
+    expect(validateFolderUpload(files, { repositoryUploadBytes: 1_000, repositoryFiles: 10, maxTextFileBytes: 1_000 })).toHaveLength(1);
+  });
 });

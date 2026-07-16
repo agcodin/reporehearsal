@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatBytes } from "../../src/billing/plans";
+import { usePlan } from "../components/PlanProvider";
 
 type UploadResult = {
   id: string; name: string; fileCount: number; analyzedFileCount: number; totalBytes: number;
@@ -9,6 +11,7 @@ type UploadResult = {
 
 export default function LocalUploadCard() {
   const router = useRouter();
+  const { activePlan, plan } = usePlan();
   const folderInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [message, setMessage] = useState("");
@@ -19,11 +22,11 @@ export default function LocalUploadCard() {
     setStatus("loading"); setMessage(""); setRepository(null);
     try {
       const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
-      if (totalBytes > 20 * 1024 * 1024) throw new Error("Choose a codebase that is 20 MB or smaller.");
+      if (totalBytes > plan.limits.repositoryUploadBytes) throw new Error(`Choose a codebase that is ${formatBytes(plan.limits.repositoryUploadBytes)} or smaller on ${plan.name}.`);
       const form = new FormData(); form.set("name", name);
       if (archive) form.set("archive", files[0]);
       else { files.forEach(file => form.append("files", file)); form.set("paths", JSON.stringify(paths)); }
-      const response = await fetch("/api/repositories/upload", { method: "POST", body: form });
+      const response = await fetch("/api/repositories/upload", { method: "POST", headers: { "x-reporehearsal-plan": activePlan }, body: form });
       const result = await response.json() as { repository?: UploadResult; accessToken?: string; savedToAccount?: boolean; error?: { message?: string } };
       if (!response.ok || !result.repository || !result.accessToken) throw new Error(result.error?.message ?? "The codebase could not be analyzed.");
       sessionStorage.setItem(`rr-repository-${result.repository.id}`, result.accessToken);
@@ -62,7 +65,7 @@ export default function LocalUploadCard() {
       <label className={`button button-dark ${status === "loading" ? "button-disabled" : ""}`}>Choose project folder<input ref={folderInput} type="file" multiple onChange={chooseFolder} disabled={status === "loading"} /></label>
       <label className={`button button-ghost ${status === "loading" ? "button-disabled" : ""}`}>Choose ZIP archive<input type="file" accept=".zip,application/zip" onChange={chooseZip} disabled={status === "loading"} /></label>
     </div>
-    <small>Maximum 20 MB expanded · 3,000 files · supported text source and configuration files</small>
+    <small>{plan.name} preview · {formatBytes(plan.limits.repositoryUploadBytes)} expanded · {plan.limits.repositoryFiles.toLocaleString()} files · supported text source and configuration files</small>
     {status === "loading" && <div className="upload-progress" role="status"><span className="pulse" /> Reading and mapping the codebase…</div>}
     {status === "error" && <div className="import-result import-error" role="alert"><b>Upload stopped safely</b><p>{message}</p></div>}
     {repository && <div className="import-result" aria-live="polite"><div className="import-result-head"><div><span className="badge badge-green">ANALYSIS COMPLETE</span><h3>{repository.name}</h3><p>{repository.analyzedFileCount.toLocaleString()} safe text files analyzed from {repository.fileCount.toLocaleString()} selected files.</p></div></div><div className="repo-meta"><div><small>ANALYZED</small><b>{repository.analyzedFileCount.toLocaleString()}</b></div><div><small>SIZE</small><b>{Math.max(1, Math.round(repository.totalBytes / 1024))} KB</b></div><div><small>INCIDENTS</small><b>{repository.compatibleIncidentIds.length}</b></div></div><div className="tag-row">{Object.values(repository.stack).filter(value => value !== "unknown").map(value => <span className="tag" key={value}>{value}</span>)}</div><p>{message}</p>{repository.warnings.map(warning => <p className="import-warning" key={warning}>{warning}</p>)}<div className="actions"><button className="button button-blue" onClick={()=>router.push(`/rehearsals/new?repositoryId=${encodeURIComponent(repository.id)}`)}>Create rehearsal →</button><button className="button button-ghost" onClick={remove}>Remove stored copy</button></div></div>}

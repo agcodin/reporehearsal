@@ -6,16 +6,18 @@ import { saveRepository } from "../../../../src/repositories/repository-service"
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
 import { analyzeRepository } from "../../../../src/repositories/analyzer";
 import { GENERATED_INCIDENT_ID } from "../../../../src/incidents/brain";
+import { planFromRequest } from "../../../../src/billing/plans";
 
 export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
     await consumeRateLimit(request, "github-import", 10, 3_600);
+    const plan = planFromRequest(request);
     const body = githubImportRequestSchema.safeParse(await request.json());
     if (!body.success) return NextResponse.json({ error: { code: "INVALID_REQUEST", message: "Enter a valid GitHub repository URL.", correlationId } }, { status: 400 });
-    const repository = await importPublicGitHubRepository(body.data.url, { token: process.env.GITHUB_TOKEN });
+    const repository = await importPublicGitHubRepository(body.data.url, { token: process.env.GITHUB_TOKEN, limits: plan.limits });
     const user = await getChatGPTUser();
-    const files = await downloadPublicGitHubSource(body.data.url, repository.defaultBranch);
+    const files = await downloadPublicGitHubSource(body.data.url, repository.defaultBranch, { limits: plan.limits });
     const analysis = analyzeRepository(repository.id, repository.name, files);
     const stack = { language: analysis.language, framework: analysis.framework, database: analysis.database, orm: analysis.orm, testFramework: analysis.testFramework, packageManager: analysis.packageManager };
     const compatibleIncidentIds = analysis.incidentCandidates.length ? [GENERATED_INCIDENT_ID] : [];

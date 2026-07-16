@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
-import { analyzeUploadedFiles, extractZipUpload, MAX_UPLOAD_BYTES, RepositoryUploadError, validateFolderUpload, type UploadedFile } from "../../../../src/repositories/upload/analyzer";
+import { analyzeUploadedFiles, extractZipUpload, RepositoryUploadError, validateFolderUpload, type UploadedFile } from "../../../../src/repositories/upload/analyzer";
+import { formatBytes, planFromRequest } from "../../../../src/billing/plans";
 import { saveRepository } from "../../../../src/repositories/repository-service";
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
 
@@ -9,8 +10,9 @@ export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
     await consumeRateLimit(request, "repository-upload", 10, 3_600);
+    const plan = planFromRequest(request);
     const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > MAX_UPLOAD_BYTES + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", "The upload exceeds the 20 MB limit.", 413);
+    if (contentLength > plan.limits.repositoryUploadBytes + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The upload exceeds the ${formatBytes(plan.limits.repositoryUploadBytes)} ${plan.name} limit.`, 413);
     const form = await request.formData();
     const archive = form.get("archive");
     const rawFiles = form.getAll("files").filter((value): value is File => value instanceof File);
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
     let sourceFileCount: number;
     if (archive instanceof File) {
       if (!/\.zip$/i.test(archive.name)) throw new RepositoryUploadError("INVALID_FILE_TYPE", "Choose a .zip archive or a source folder.");
-      const extracted = extractZipUpload(new Uint8Array(await archive.arrayBuffer()));
+      const extracted = extractZipUpload(new Uint8Array(await archive.arrayBuffer()), plan.limits);
       files = extracted.files;
       sourceFileCount = extracted.fileCount;
     } else {
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
       try { paths = typeof rawPaths === "string" ? JSON.parse(rawPaths) : []; } catch { throw new RepositoryUploadError("INVALID_MANIFEST", "The folder file list is invalid."); }
       if (!Array.isArray(paths) || paths.length !== rawFiles.length || paths.some(path => typeof path !== "string")) throw new RepositoryUploadError("INVALID_MANIFEST", "The folder file list is invalid.");
       sourceFileCount = rawFiles.length;
-      files = validateFolderUpload(await Promise.all(rawFiles.map(async (file, index) => ({ path: paths[index] as string, bytes: new Uint8Array(await file.arrayBuffer()) }))));
+      files = validateFolderUpload(await Promise.all(rawFiles.map(async (file, index) => ({ path: paths[index] as string, bytes: new Uint8Array(await file.arrayBuffer()) }))), plan.limits);
     }
     const repository = analyzeUploadedFiles(name, files, sourceFileCount);
     const user = await getChatGPTUser();

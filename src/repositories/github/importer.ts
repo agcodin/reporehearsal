@@ -1,10 +1,9 @@
 import { z } from "zod";
 import { isSafeArchiveEntry } from "../../security/path-validation";
-import { extractZipUpload, MAX_UPLOAD_BYTES } from "../upload/analyzer";
+import { extractZipUpload, DEFAULT_UPLOAD_LIMITS } from "../upload/analyzer";
 import type { WorkspaceFile } from "../../rehearsals/types";
+import type { PlanLimits } from "../../billing/plans";
 
-const MAX_REPOSITORY_KB = 20 * 1024;
-const MAX_FILES = 3_000;
 const OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
@@ -81,17 +80,19 @@ function decodeContent(payload: unknown): string {
   } catch { throw new GitHubImportError("INVALID_CONTENT", "A required repository metadata file could not be decoded."); }
 }
 
-export async function importPublicGitHubRepository(value: string, options: { fetcher?: Fetcher; token?: string } = {}): Promise<GitHubImportResult> {
+export async function importPublicGitHubRepository(value: string, options: { fetcher?: Fetcher; token?: string; limits?: PlanLimits } = {}): Promise<GitHubImportResult> {
   const ref = parseGitHubRepositoryUrl(value);
   const fetcher = options.fetcher ?? fetch;
+  const limits = options.limits ?? DEFAULT_UPLOAD_LIMITS;
+  const maxRepositoryKb = Math.floor(limits.repositoryUploadBytes / 1024);
   const apiRoot = `https://api.github.com/repos/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repository)}`;
   const repository = repositoryResponseSchema.parse(await githubJson(fetcher, apiRoot, options.token));
   if (repository.private) throw new GitHubImportError("PRIVATE_REPOSITORY", "Private repositories require an authorized GitHub connection.", 403);
-  if (repository.size > MAX_REPOSITORY_KB) throw new GitHubImportError("REPOSITORY_TOO_LARGE", "Repository exceeds the 20 MB import limit.", 413);
+  if (repository.size > maxRepositoryKb) throw new GitHubImportError("REPOSITORY_TOO_LARGE", `Repository exceeds the ${Math.round(maxRepositoryKb / 1024)} MB import limit.`, 413);
   const tree = treeResponseSchema.parse(await githubJson(fetcher, `${apiRoot}/git/trees/${encodeURIComponent(repository.default_branch)}?recursive=1`, options.token));
   if (tree.truncated) throw new GitHubImportError("TREE_TRUNCATED", "Repository tree is too large to import safely.", 413);
   const files = tree.tree.filter(entry => entry.type === "blob");
-  if (files.length > MAX_FILES) throw new GitHubImportError("TOO_MANY_FILES", "Repository exceeds the 3,000 file import limit.", 413);
+  if (files.length > limits.repositoryFiles) throw new GitHubImportError("TOO_MANY_FILES", `Repository exceeds the ${limits.repositoryFiles.toLocaleString()} file import limit.`, 413);
   if (tree.tree.some(entry => entry.mode === "120000" || entry.type === "commit")) throw new GitHubImportError("UNSUPPORTED_LINK", "Repositories containing symbolic links or submodules are not supported.");
   if (files.some(entry => !isSafeArchiveEntry(entry.path))) throw new GitHubImportError("UNSAFE_PATH", "Repository contains an unsafe file path.");
   const paths = files.map(entry => entry.path);
@@ -117,17 +118,19 @@ export async function importPublicGitHubRepository(value: string, options: { fet
   };
 }
 
-export async function downloadPublicGitHubSource(value: string, branch: string, options: { fetcher?: Fetcher } = {}): Promise<WorkspaceFile[]> {
+export async function downloadPublicGitHubSource(value: string, branch: string, options: { fetcher?: Fetcher; limits?: PlanLimits } = {}): Promise<WorkspaceFile[]> {
   const ref = parseGitHubRepositoryUrl(value); const fetcher = options.fetcher ?? fetch;
+  const limits = options.limits ?? DEFAULT_UPLOAD_LIMITS;
+  const limitLabel = `${Math.round(limits.repositoryUploadBytes / 1024 / 1024)} MB`;
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 15_000);
   try {
     const response = await fetcher(`https://codeload.github.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repository)}/zip/${encodeURIComponent(branch)}`, { signal: controller.signal, headers: { "User-Agent": "RepoRehearsal/1.0" } });
     if (!response.ok) throw new GitHubImportError("SOURCE_UNAVAILABLE", "GitHub source could not be downloaded for the rehearsal.", 502);
     const declaredSize = Number(response.headers.get("content-length") ?? 0);
-    if (declaredSize > MAX_UPLOAD_BYTES) throw new GitHubImportError("REPOSITORY_TOO_LARGE", "Repository source exceeds the 20 MB import limit.", 413);
+    if (declaredSize > limits.repositoryUploadBytes) throw new GitHubImportError("REPOSITORY_TOO_LARGE", `Repository source exceeds the ${limitLabel} import limit.`, 413);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new GitHubImportError("REPOSITORY_TOO_LARGE", "Repository source exceeds the 20 MB import limit.", 413);
-    const extracted = extractZipUpload(bytes); const decoder = new TextDecoder("utf-8", { fatal: true }); const files: WorkspaceFile[] = [];
+    if (bytes.byteLength > limits.repositoryUploadBytes) throw new GitHubImportError("REPOSITORY_TOO_LARGE", `Repository source exceeds the ${limitLabel} import limit.`, 413);
+    const extracted = extractZipUpload(bytes, limits); const decoder = new TextDecoder("utf-8", { fatal: true }); const files: WorkspaceFile[] = [];
     for (const file of extracted.files) { try { files.push({ path: file.path, content: decoder.decode(file.bytes) }); } catch { /* Invalid text files are excluded. */ } }
     if (!files.length) throw new GitHubImportError("NO_ANALYZABLE_FILES", "No supported source files were found in the repository.");
     return files;
