@@ -18,6 +18,7 @@
 - [x] Stretch 2 — add timed Interview mode with coaching disabled and interviewer-focused reporting.
 - [x] Public intake — make accounts optional, add a dedicated account entry page, local folder/ZIP analysis, and account-owned repository metadata.
 - [x] Production lifecycle — persist filtered sources and disposable workspaces in R2, authorize sessions in D1, replace browser-local state, add distinct scenarios, live report enhancement, rate limits, deletion, cleanup, migrations, and end-to-end coverage.
+- [x] Repository brain — derive faults from imported source boundaries, preserve per-session baselines, validate repaired contracts, and score the complete investigation trail.
 
 ## Phase notes
 
@@ -52,3 +53,7 @@ Kept the landing page, demo, public GitHub import, local upload, and rehearsal s
 ### Production lifecycle
 
 Replaced the browser-local rehearsal prototype with authorized D1 session records and per-session R2 working copies. Public GitHub and local imports now store filtered source snapshots so the selected codebase actually drives the rehearsal. Added separate database, configuration, and provider-drift injections and validators; server-backed files, evidence, hypotheses, hints, approved commands, time limits, reports, and immediate workspace disposal; optional OpenAI Responses API structured report enhancement; fixed-window abuse limits; repository deletion; scheduled cleanup; schema migrations; and a complete anonymous API lifecycle test.
+
+### Repository brain
+
+Replaced fixed-filename behavior for imported repositories with a deterministic source-derived incident engine. The analyzer now maps routes, services, Prisma models, environment contracts, health checks, migrations, tests, and ranked incident candidates. A generated rehearsal stores the selected mutation, original target, file hashes, evidence, and hidden behavior contract with the disposable workspace; the immutable repository snapshot remains unchanged. Submission validates repair behavior, original structure, bounded scope, and unsafe shortcuts, then calculates a 100-point process score from hypotheses, evidence order, file investigation, verification commands, test changes, communication, and hints. Added unit coverage for candidate ranking/injection/scoring and an end-to-end anonymous upload → generated incident → repair → report lifecycle.

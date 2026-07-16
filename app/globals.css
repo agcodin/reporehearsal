@@ -36,3 +36,7 @@
 @media(max-width:1180px){.dashboard-preview{grid-template-columns:1fr}.dashboard-preview-copy{max-width:700px}}
 @media(max-width:900px){.feature-breakdown-head{align-items:flex-start;flex-direction:column}.feature-plan-tabs{width:100%;overflow-x:auto}.feature-plan-tabs button{flex:1}.feature-table thead th:first-child{width:48%}}
 @media(max-width:600px){.feature-breakdown{margin-top:70px}.feature-breakdown-head h2{font-size:35px}.feature-table{min-width:680px}.dashboard-preview{padding:18px}.dashboard-preview-copy h2{font-size:27px}.mock-dashboard{min-height:0;padding:15px}.mock-case-grid,.mock-enterprise-grid{grid-template-columns:1fr}.mock-metrics{grid-template-columns:1fr 1fr}.mock-team-row{grid-template-columns:1fr 40px}.mock-team-row span{grid-column:1/3;grid-row:2}.feature-plan-tabs button{padding:10px 9px}}
+
+/* Repository-derived rehearsal signals */
+.scenario-grid>.scenario-card:only-child{grid-column:1/-1;max-width:760px}.generated-badge{display:inline-block;margin-left:7px}.generated-reason{padding:11px 12px;border-left:2px solid #6f91ff;background:#142536;color:#b9c5d0!important}.side-section>.button{margin-top:7px}
+@media(max-width:600px){.generated-badge{display:block;width:max-content;margin:8px 0 0}.scenario-grid>.scenario-card:only-child{max-width:none}}

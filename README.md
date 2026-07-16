@@ -11,11 +11,12 @@ Developers often practice incident response for the first time during a real out
 ## Main features
 
 - Seeded TypeScript billing repository with realistic routes, migrations, fixtures, logs, health checks, and tests.
-- Deterministic repository map and incident compatibility analysis.
+- Structural repository map with services, routes, data models, environment contracts, health checks, and ranked repairable incident boundaries.
+- A repository brain that derives a per-session fault from the imported source instead of applying demo filenames to unrelated projects.
 - Versioned database, configuration, and external-dependency incident templates.
 - D1/R2-backed repository snapshots and per-session working copies with strict paths, opaque access tokens, expiry, deletion, and cleanup.
 - IDE-style investigation workspace with editable code, logs, test results, database comparison, service health, hypotheses, hints, and timeline.
-- Public tests, hidden behavioral checks, unsafe-patch scanning, scoring, and Markdown after-action reports.
+- Public checks, hidden repository-baseline contracts, unsafe-patch scanning, evidence-based scoring, and Markdown after-action reports.
 - Deterministic validation and reporting that need neither an OpenAI key nor a private repository; configured OpenAI structured output can enhance coaching prose.
 - Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
 - Local folder and ZIP analysis with traversal, expansion, file-count, secret, binary, and generated-file controls.
@@ -81,6 +82,10 @@ The clean billing fixture contains a valid `billingRegion` for every account. Th
 
 A safe repair must handle legacy data, update the secondary creation path, preserve the field constraint, and include a backfill/regression signal. Hardcoded sample fixes, disabled tests, blanket success responses, and removed constraints fail static or hidden validation.
 
+For an uploaded folder, ZIP, or public GitHub repository, the repository brain scans the actual filtered source snapshot for supported behavior boundaries: container service hostnames, null-safe normalization, external-response guards, environment fallbacks, and repository-owned test/build commands. It ranks candidates by confidence, stores the selected baseline and mutation contract in the disposable session workspace, and changes only that session copy. If no safe repairable boundary exists, rehearsal creation stops truthfully instead of fabricating a challenge.
+
+Submission compares the repaired workspace with the original snapshot and the selected behavior contract. Pass/fail requires the customer symptom to be repaired, the original structure to remain intact, the change scope to stay bounded, and unsafe bypasses to be absent. The 100-point score is separately derived from diagnosis, evidence gathered before editing, fix quality, verification commands, prevention/test changes, communication, and hint use. This makes two valid repairs capable of passing while receiving different readiness scores.
+
 ## Security model
 
 - Source repositories are immutable inputs; sessions use copied workspaces.
@@ -124,7 +129,7 @@ Choose **Interview mode** while configuring a rehearsal. The workspace displays 
 ## Known limitations
 
 - Sites does not expose Google or GitHub OAuth configuration, so the deployed account provider is ChatGPT only. Public GitHub URLs and local uploads remain account-optional.
-- The hosted worker intentionally does not execute arbitrary uploaded code. Real container execution requires a separate hardened sandbox service with network policy, quotas, patching, and audit logs.
+- The hosted worker intentionally does not execute arbitrary uploaded commands. It validates repository-derived behavior contracts and source diffs; full native/container test execution requires a separate hardened sandbox service with network policy, quotas, patching, and audit logs.
 - The workspace editor is a focused textarea implementation rather than Monaco.
 - OpenAI report enhancement activates only when `OPENAI_API_KEY` is configured; deterministic validation and reports remain fully functional without it.
 

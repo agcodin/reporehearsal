@@ -53,7 +53,7 @@ export default function PreparingSession({ sessionId }: { sessionId: string }) {
     <h1>{error ? "The workspace needs attention." : session ? "Your incident is ready." : "Building a disposable rehearsal…"}</h1>
     <p>{error || "Your repository snapshot stays unchanged while this session receives its own working copy."}</p>
     <div className="stepper">{steps.map((step, index) => <div className="prep-step" key={step}><span className="check">{session ? "✓" : index === 0 ? "•" : "·"}</span><b>{step}</b><small>{session ? "DONE" : "WAITING"}</small></div>)}</div>
-    {session && <><div className="prepare-note"><b>Session boundary</b><br />Repository: {session.repositoryName} · Server-managed working copy · Approved commands only · Automatic expiry</div><div className="prepare-summary"><span>{session.mode.toLowerCase()} mode</span><span>{session.timeLimitMinutes}-minute limit</span><span>{session.incidentTemplateId.replaceAll("-", " ")}</span></div></>}
+    {session && <><div className="prepare-note"><b>Session boundary</b><br />Repository: {session.repositoryName} · Server-managed working copy · Approved commands only · Automatic expiry</div><div className="prepare-summary"><span>{session.mode.toLowerCase()} mode</span><span>{session.timeLimitMinutes}-minute limit</span><span>{session.incidentTemplateId === "repository-generated-v1" ? "repository-derived incident" : session.incidentTemplateId.replaceAll("-", " ")}</span></div></>}
     <div style={{ marginTop: 30 }}><button className="button button-accent" onClick={start} disabled={!session || session.status !== "READY" || starting}>{starting ? "Starting…" : "Open incident workspace →"}</button></div>
   </main>;
 }

@@ -1,6 +1,7 @@
 import { unzipSync } from "fflate";
 import { analyzeRepository, type AnalyzableFile } from "../analyzer";
 import { isSafeArchiveEntry } from "../../security/path-validation";
+import { GENERATED_INCIDENT_ID } from "../../incidents/brain";
 
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_UPLOAD_FILES = 3_000;
@@ -107,7 +108,7 @@ export function analyzeUploadedFiles(name: string, allFiles: UploadedFile[], sou
   const database = map.database ?? "unknown";
   const orm = map.orm ?? "unknown";
   const packageManager = paths.includes("pnpm-lock.yaml") ? "pnpm" : paths.includes("yarn.lock") ? "Yarn" : paths.includes("package-lock.json") ? "npm" : "unknown";
-  const compatibleIncidentIds = [...(language === "TypeScript" && framework === "Express" && orm === "Prisma" ? ["db-required-field-migration-v1"] : []), ...(language === "TypeScript" ? ["container-host-config-v1", "provider-schema-drift-v1"] : [])];
+  const compatibleIncidentIds = map.incidentCandidates.length ? [GENERATED_INCIDENT_ID] : [];
   return {
     id, name: safeName, fileCount: sourceFileCount, analyzedFileCount: analyzable.length, totalBytes,
     stack: { language, framework, database, orm, testFramework, packageManager },

@@ -4,6 +4,8 @@ import { getChatGPTUser } from "../../../chatgpt-auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
 import { saveRepository } from "../../../../src/repositories/repository-service";
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
+import { analyzeRepository } from "../../../../src/repositories/analyzer";
+import { GENERATED_INCIDENT_ID } from "../../../../src/incidents/brain";
 
 export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
@@ -14,9 +16,13 @@ export async function POST(request: Request) {
     const repository = await importPublicGitHubRepository(body.data.url, { token: process.env.GITHUB_TOKEN });
     const user = await getChatGPTUser();
     const files = await downloadPublicGitHubSource(body.data.url, repository.defaultBranch);
-    const stored = await saveRepository(user ? { email: user.email, displayName: user.displayName } : null, { source: "GITHUB_PUBLIC", externalRef: repository.id, name: repository.name, analysis: repository as unknown as Record<string, unknown>, files });
-    if (user) await saveAccountRepository(user.email, user.displayName, { id: stored.repository.id, source: "GITHUB_PUBLIC", externalId: repository.id, name: repository.name, displayRef: repository.fullName, ...repository.stack, fileCount: repository.fileCount });
-    return NextResponse.json({ repository: { ...repository, id: stored.repository.id }, accessToken: stored.accessToken, savedToAccount: Boolean(user), sourceModified: false, correlationId });
+    const analysis = analyzeRepository(repository.id, repository.name, files);
+    const stack = { language: analysis.language, framework: analysis.framework, database: analysis.database, orm: analysis.orm, testFramework: analysis.testFramework, packageManager: analysis.packageManager };
+    const compatibleIncidentIds = analysis.incidentCandidates.length ? [GENERATED_INCIDENT_ID] : [];
+    const detectedFiles = [...analysis.entryPoints, ...analysis.migrations, ...analysis.testFiles].slice(0, 20);
+    const stored = await saveRepository(user ? { email: user.email, displayName: user.displayName } : null, { source: "GITHUB_PUBLIC", externalRef: repository.id, name: repository.name, analysis: { ...analysis, sourceUrl: repository.sourceUrl, fullName: repository.fullName } as unknown as Record<string, unknown>, files });
+    if (user) await saveAccountRepository(user.email, user.displayName, { id: stored.repository.id, source: "GITHUB_PUBLIC", externalId: repository.id, name: repository.name, displayRef: repository.fullName, ...stack, fileCount: repository.fileCount });
+    return NextResponse.json({ repository: { ...repository, id: stored.repository.id, stack, compatibleIncidentIds, detectedFiles, warnings: [...repository.warnings, ...(compatibleIncidentIds.length ? [] : ["No safe, repairable source boundary was found for automatic incident generation."])] }, accessToken: stored.accessToken, savedToAccount: Boolean(user), sourceModified: false, correlationId });
   } catch (error) {
     if (error instanceof RateLimitError) return NextResponse.json({ error: { code: "RATE_LIMITED", message: error.message, correlationId } }, { status: 429, headers: { "Retry-After": String(error.retryAfter) } });
     if (error instanceof GitHubImportError) return NextResponse.json({ error: { code: error.code, message: error.message, correlationId } }, { status: error.status });

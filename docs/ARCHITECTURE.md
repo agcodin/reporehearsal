@@ -7,7 +7,8 @@ flowchart LR
   UI[Public React UI] --> API[Zod-validated route handlers]
   API --> Intake[GitHub · folder · ZIP intake]
   Intake --> Analyzer[Deterministic analyzer]
-  Analyzer --> R2[(R2 immutable snapshots)]
+  Analyzer --> Brain[Rank repairable source boundaries]
+  Brain --> R2[(R2 immutable snapshots)]
   API --> Sessions[Rehearsal session service]
   Sessions --> D1[(D1 ownership + state)]
   Sessions --> Work[R2 session working copy]
@@ -22,9 +23,9 @@ flowchart LR
 
 1. Intake validates paths, types, file count, and expanded size, excludes secrets/generated content, and stores an immutable filtered snapshot.
 2. Creating a rehearsal authorizes that snapshot by account ownership or a hashed opaque token and immediately copies it to a session-specific R2 object.
-3. Preparation overlays exactly one versioned scenario fault without modifying the stored source.
+3. For imported repositories, the repository brain ranks real source boundaries and stores a serializable incident blueprint containing the selected target, known-good contract, source hashes, evidence, and hints. Preparation applies exactly one mutation to the working copy. Built-in cases continue to use their versioned adapters.
 4. During an active session, all reads, writes, evidence, hypotheses, hints, and approved command IDs pass through authorized server routes and are recorded in D1.
-5. Submission runs scenario-specific deterministic validation. The score and pass/fail result are authoritative. Optional OpenAI output can rewrite coaching fields only.
+5. Submission validates the repaired behavior contract, baseline structure, unsafe-bypass policy, and change scope. A separate 100-point rubric scores diagnosis, investigation, fix quality, verification, prevention, communication, and hint independence. Optional OpenAI output can rewrite coaching fields only.
 6. The report remains durable; the working-copy object is deleted after submission or expiry.
 
 ## Trust boundaries
@@ -38,4 +39,4 @@ flowchart LR
 
 ## Supported production surface
 
-The hosted product supports all three incident categories—database migration, container configuration, and provider schema drift—with distinct faults, evidence, target files, and checks. ChatGPT is the only configured identity provider exposed by Sites. Google/GitHub OAuth and private GitHub installation flows require hosting capabilities that are not currently available; public GitHub URL import remains fully supported.
+The hosted product supports the four built-in cases plus generated incidents for compatible JavaScript/TypeScript repositories. Current source adapters detect container host contracts, null-safe normalization, fetch response guards, environment fallbacks, and test/build scripts. The worker does not execute repository-controlled commands; a future native adapter remains isolated behind `SandboxService`. ChatGPT is the only configured identity provider exposed by Sites. Google/GitHub OAuth and private GitHub installation flows require hosting capabilities that are not currently available; public GitHub URL import remains fully supported.

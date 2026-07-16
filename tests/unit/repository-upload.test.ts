@@ -5,7 +5,7 @@ import { analyzeUploadedFiles, extractZipUpload, RepositoryUploadError, validate
 describe("local repository uploads", () => {
   it("extracts a supported ZIP, strips the common root, and excludes secrets", () => {
     const zip = zipSync({
-      "billing/package.json": strToU8('{"dependencies":{"express":"5","@prisma/client":"6"},"devDependencies":{"typescript":"5","vitest":"3"}}'),
+      "billing/package.json": strToU8('{"scripts":{"test":"vitest run"},"dependencies":{"express":"5","@prisma/client":"6"},"devDependencies":{"typescript":"5","vitest":"3"}}'),
       "billing/package-lock.json": strToU8("{}"),
       "billing/src/server.ts": strToU8("export const app = true"),
       "billing/tests/billing.test.ts": strToU8("test('billing', () => {})"),
@@ -19,7 +19,7 @@ describe("local repository uploads", () => {
     expect(extracted.files.map(file => file.path)).not.toContain(".env");
     const analysis = analyzeUploadedFiles("Billing", extracted.files, extracted.fileCount);
     expect(analysis.stack).toMatchObject({ language: "TypeScript", framework: "Express", database: "PostgreSQL", orm: "Prisma", testFramework: "Vitest", packageManager: "npm" });
-    expect(analysis.compatibleIncidentIds).toContain("db-required-field-migration-v1");
+    expect(analysis.compatibleIncidentIds).toContain("repository-generated-v1");
     expect(analysis.warnings[0]).toMatch(/excluded/);
   });
 

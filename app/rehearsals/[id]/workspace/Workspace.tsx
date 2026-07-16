@@ -7,8 +7,8 @@ import CodeEditor from "../../../components/CodeEditor";
 type Tab = "terminal" | "logs" | "tests" | "database" | "health";
 type Timeline = { type: string; timestamp: string; summary: string };
 type Session = { id: string; repositoryName: string; mode: string; status: string; startedAt: string | null; timeLimitMinutes: number; hintCount: number; hypotheses: string[]; timeline: Timeline[] };
-type Briefing = { title: string; severity: string; customerReport: string; knownImpact: string[] };
-type Evidence = { logs: string[]; database: string[]; health: string[]; briefing: Briefing; targetPath: string; hints: string[] };
+type Briefing = { title: string; severity: string; customerReport: string; initialAlert: string; knownImpact: string[] };
+type Evidence = { logs: string[]; database: string[]; health: string[]; briefing: Briefing; targetPath: string; hints: string[]; generated?: { engine: string; confidence: number; reason: string } };
 
 export default function Workspace({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
         if (sessionData.session.status === "COMPLETED") { router.replace(`/rehearsals/${sessionId}/report`); return; }
         if (sessionData.session.status !== "ACTIVE") { router.replace(`/rehearsals/${sessionId}/preparing`); return; }
         setSession(sessionData.session); setFiles(fileData.files); setEvidence(evidenceData.evidence);
-        setConsoleText(evidenceData.evidence.logs.join("\n"));
+        setConsoleText(`ALERT\n${evidenceData.evidence.briefing.initialAlert}\n\nUse the investigation tools to collect evidence before editing.`);
         await openFile(evidenceData.evidence.targetPath);
       } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "The rehearsal could not be loaded."); }
     }
@@ -94,6 +94,13 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
     finally { setBusy(""); }
   }
 
+  async function showLogs() {
+    setBusy("logs"); setError("");
+    try { const data = await api(`/api/rehearsals/${sessionId}/logs`); setTab("logs"); setConsoleText(data.logs.join("\n")); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Logs could not be loaded."); }
+    finally { setBusy(""); }
+  }
+
   async function addHypothesis() {
     if (!hypothesis.trim()) return;
     setBusy("hypothesis");
@@ -124,8 +131,8 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
     <div className="workspace-grid">
       <aside className="file-panel"><div className="panel-head">EXPLORER · {session.repositoryName.toUpperCase()}</div><div className="file-tree">{files.map(file => <button className={path === file ? "active-file" : ""} onClick={() => void openFile(file)} key={file}>{file}</button>)}</div></aside>
       <section className="editor-zone"><div className="code-editor"><div className="editor-toolbar"><span className="editor-tab"><i className="ts-file-icon">{path.split(".").pop()?.slice(0, 3).toUpperCase() ?? "TXT"}</i>{path}</span><em>{source === savedSource ? "saved" : "● unsaved"}</em><button className="button button-ghost button-small" onClick={save} disabled={source === savedSource || Boolean(busy)}>{busy === "save" ? "Saving…" : "Save · ⌘S"}</button></div><CodeEditor path={path} value={source} onChange={setSource} onSave={() => void save()} /></div><div className="bottom-console"><div className="tabs">{(["terminal", "logs", "tests", "database", "health"] as Tab[]).map(item => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item.toUpperCase()}</button>)}</div><div className="console-body">{consoleText}</div></div></section>
-      <aside className="side-panel"><div className="brief"><span className="badge badge-red">{evidence.briefing.severity}</span><h2>{evidence.briefing.title}</h2><p>{evidence.briefing.customerReport}</p><p><b>Impact</b></p><ul>{evidence.briefing.knownImpact.map(item => <li key={item}>{item}</li>)}</ul></div>
-        <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>INVESTIGATION TOOLS</div><button className="button button-ghost button-small" onClick={() => { setTab("logs"); setConsoleText(evidence.logs.join("\n")); }}>Inspect incident logs</button><button className="button button-ghost button-small" onClick={showDatabase}>Compare affected records</button><button className="button button-ghost button-small" onClick={() => command("migration-status", "terminal")}>Inspect dependency state</button><button className="button button-ghost button-small" onClick={() => command("run-tests", "tests")}>Run incident tests</button><button className="button button-ghost button-small" onClick={() => command("check-health", "health")}>Check service health</button></div>
+      <aside className="side-panel"><div className="brief"><span className="badge badge-red">{evidence.briefing.severity}</span>{evidence.generated && <span className="badge badge-blue generated-badge">REPOSITORY-DERIVED · {Math.round(evidence.generated.confidence * 100)}% MATCH</span>}<h2>{evidence.briefing.title}</h2><p>{evidence.briefing.customerReport}</p>{evidence.generated && <p className="generated-reason"><b>Why this incident</b><br />Selected from a repairable behavior boundary found in the imported source snapshot.</p>}<p><b>Impact</b></p><ul>{evidence.briefing.knownImpact.map(item => <li key={item}>{item}</li>)}</ul></div>
+        <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>INVESTIGATION TOOLS</div><button className="button button-ghost button-small" onClick={showLogs}>Inspect incident logs</button><button className="button button-ghost button-small" onClick={showDatabase}>Compare affected records</button><button className="button button-ghost button-small" onClick={() => command("migration-status", "terminal")}>Inspect dependency state</button><button className="button button-ghost button-small" onClick={() => command("run-tests", "tests")}>Run incident tests</button><button className="button button-ghost button-small" onClick={() => command("run-build", "terminal")}>Run build contract</button><button className="button button-ghost button-small" onClick={() => command("run-lint", "terminal")}>Run lint contract</button><button className="button button-ghost button-small" onClick={() => command("restart-service", "terminal")}>Restart service</button><button className="button button-ghost button-small" onClick={() => command("check-health", "health")}>Check service health</button></div>
         <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>HYPOTHESES</div>{session.hypotheses.map((item, index) => <div className="hint-box" key={`${item}-${index}`}>{item}</div>)}<textarea rows={3} value={hypothesis} onChange={event => setHypothesis(event.target.value)} aria-label="Investigation hypothesis" placeholder="State your belief and supporting evidence" /><button className="button button-ghost button-small" onClick={addHypothesis} disabled={busy === "hypothesis"}>Add hypothesis</button></div>
         {session.mode !== "INTERVIEW" ? <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>COACH · {session.hintCount}/{evidence.hints.length} HINTS</div><button className="button button-ghost button-small" onClick={hint} disabled={busy === "hint" || session.hintCount >= evidence.hints.length}>Request next hint</button>{activeHint && <div className="hint-box"><b>Level {session.hintCount}</b><br />{activeHint}</div>}</div> : <div className="side-section interview-lock"><div className="panel-head" style={{ padding: 0, border: 0 }}>INTERVIEW CONDITIONS</div><p>Coaching hints are disabled. The report emphasizes evidence use, verification, and communication.</p></div>}
         <div className="side-section"><div className="panel-head" style={{ padding: 0, border: 0 }}>TIMELINE</div>{session.timeline.map((item, index) => <div className="timeline-item" key={`${item.timestamp}-${index}`}><b>{item.summary}</b><span>{new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>)}</div>

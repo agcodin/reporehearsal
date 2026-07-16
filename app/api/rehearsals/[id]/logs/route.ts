@@ -1,2 +1,2 @@
-import{NextResponse}from"next/server";import{getEvidence}from"../../../../../src/rehearsals/session-service";import{sessionRequest,rehearsalFailure}from"../../_shared";
-export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{const{id}=await params;const{user,token}=await sessionRequest(request);return NextResponse.json({logs:(await getEvidence(id,user,token)).logs})}catch(error){return rehearsalFailure(error)}}
+import{NextResponse}from"next/server";import{getEvidence,recordEvidenceAccess}from"../../../../../src/rehearsals/session-service";import{sessionRequest,rehearsalFailure}from"../../_shared";
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{const{id}=await params;const{user,token}=await sessionRequest(request);const logs=(await getEvidence(id,user,token)).logs;await recordEvidenceAccess(id,"logs",user,token);return NextResponse.json({logs})}catch(error){return rehearsalFailure(error)}}

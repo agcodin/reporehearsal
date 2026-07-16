@@ -1,6 +1,7 @@
 import type { IncidentTemplate, RepositoryMap } from "./types";
 
 export const repositoryMap: RepositoryMap = {
+  analysisVersion: 1,
   repositoryId: "billing-demo",
   name: "RepoRehearsal Billing Demo",
   language: "TypeScript",
@@ -26,6 +27,10 @@ export const repositoryMap: RepositoryMap = {
   riskAreas: [
     { type: "migration", description: "Required billing field introduced across multiple account-creation paths.", relatedFiles: ["prisma/migrations/202606121410_add_billing_region/migration.sql", "src/services/billing.ts"], confidence: 0.96 },
     { type: "configuration", description: "Database host differs between local and container runtime.", relatedFiles: ["docker-compose.yml", ".env.example"], confidence: 0.78 },
+  ],
+  incidentCandidates: [
+    { id: "nullable-value-billing-demo", name: "Nullable record serialization failure", category: "database", targetPath: "src/services/billing.ts", confidence: 0.96, reason: "A required billing field crosses multiple account-creation paths and is normalized during serialization." },
+    { id: "container-host-billing-demo", name: "Container service discovery regression", category: "configuration", targetPath: "docker-compose.yml", confidence: 0.78, reason: "The database hostname changes across local and container network boundaries." },
   ],
 };
 

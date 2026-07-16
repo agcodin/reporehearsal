@@ -22,6 +22,7 @@ export type IncidentTemplate = {
 };
 
 export type RepositoryMap = {
+  analysisVersion: number;
   repositoryId: string;
   name: string;
   language: string;
@@ -39,6 +40,7 @@ export type RepositoryMap = {
   testFiles: string[];
   healthChecks: string[];
   riskAreas: { type: string; description: string; relatedFiles: string[]; confidence: number }[];
+  incidentCandidates: { id: string; name: string; category: IncidentCategory; targetPath: string; confidence: number; reason: string }[];
 };
 
 export type ValidationResult = {
