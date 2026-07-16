@@ -7,6 +7,7 @@ import { usePlan } from "../components/PlanProvider";
 const featureRows: { group: string; label: string; detail: string; included: Record<PlanId, boolean | string> }[] = [
   { group: "PRACTICE", label: "Four starter incidents", detail: "Database, configuration, provider drift, and webhook replay cases", included: { FREE: true, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "PRACTICE", label: "Public GitHub and local uploads", detail: "Analyze bounded public repositories, folders, and ZIP archives", included: { FREE: true, PRO: true, TEAM: true, ENTERPRISE: true } },
+  { group: "PRACTICE", label: "Curated repository roulette", detail: "Choose or randomly draw from 110 vetted public TypeScript projects", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "PRACTICE", label: "Repository analysis capacity", detail: "Maximum filtered source size and file count per imported repository", included: { FREE: "20 MB / 3K", PRO: "50 MB / 7.5K", TEAM: "75 MB / 15K", ENTERPRISE: "100 MB / 30K" } },
   { group: "PRACTICE", label: "Deterministic validation", detail: "Known checks determine repair quality without subjective scoring", included: { FREE: true, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "REPORTING", label: "Basic after-action report", detail: "Root cause, evidence used, validation results, and prevention", included: { FREE: true, PRO: true, TEAM: true, ENTERPRISE: true } },

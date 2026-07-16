@@ -45,7 +45,7 @@ export const plans: Plan[] = [
     cta: "Activate Pro preview",
     href: "/dashboard",
     featured: true,
-    features: ["Everything in Free", "50 MB repository analysis", "Interview mode", "Advanced skill analysis", "Saved progress with ChatGPT", "Reusable repository library"],
+    features: ["Everything in Free", "50 MB repository analysis", "110-project repository roulette", "Interview mode", "Advanced skill analysis", "Saved progress with ChatGPT", "Reusable repository library"],
     limits: { repositoryUploadBytes: 50 * MB, repositoryFiles: 7_500, maxTextFileBytes: 2 * MB },
   },
   {
