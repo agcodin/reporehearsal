@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { githubImportRequestSchema, GitHubImportError, importPublicGitHubRepository, downloadPublicGitHubSource } from "../../../../src/repositories/github/importer";
-import { getChatGPTUser } from "../../../chatgpt-auth";
+import { getAuthenticatedUser } from "../../../auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
 import { saveRepository } from "../../../../src/repositories/repository-service";
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const body = githubImportRequestSchema.safeParse(await request.json());
     if (!body.success) return NextResponse.json({ error: { code: "INVALID_REQUEST", message: "Enter a valid GitHub repository URL.", correlationId } }, { status: 400 });
     const repository = await importPublicGitHubRepository(body.data.url, { token: process.env.GITHUB_TOKEN, limits: plan.limits });
-    const user = await getChatGPTUser();
+    const user = await getAuthenticatedUser();
     const files = await downloadPublicGitHubSource(body.data.url, repository.defaultBranch, { limits: plan.limits });
     const analysis = analyzeRepository(repository.id, repository.name, files);
     const stack = { language: analysis.language, framework: analysis.framework, database: analysis.database, orm: analysis.orm, testFramework: analysis.testFramework, packageManager: analysis.packageManager };

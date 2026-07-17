@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
+import { getAuthenticatedUser, signInPath } from "../auth";
 import { getAccountDashboard } from "../../src/accounts/account-service";
 
 export const dynamic = "force-dynamic";
 function metric(value: number | null, suffix = "") { return value === null ? "—" : `${value}${suffix}`; }
 
 async function DashboardContent() {
-  const user = await getChatGPTUser();
+  const user = await getAuthenticatedUser();
   if (!user) {
     return <main className="app-page guest-dashboard">
-      <section className="guest-dashboard-hero"><div><p className="eyebrow">OPTIONAL ACCOUNT</p><h1>Your incident readiness, over time.</h1><p>Practice stays public. Sign in only when you want each verified result to become part of a personal readiness record.</p><div className="actions"><Link className="button button-accent" href={chatGPTSignInPath("/dashboard")}>Sign in with ChatGPT →</Link><Link className="button guest-hero-ghost" href="/rehearsals/new">Practice without an account</Link></div></div><div className="guest-score-card"><div><span>READINESS PROFILE</span><b>—</b></div>{["Diagnosis", "Evidence", "Repair", "Verification", "Prevention"].map((skill, index) => <span key={skill}><small>{skill}</small><i><em style={{ width: `${48 + index * 9}%` }} /></i></span>)}<p>Your verified skill signals appear here after sign-in.</p></div></section>
-      <div className="guest-path-grid"><article><span>01</span><div><p className="eyebrow">PRACTICE NOW</p><h2>Four complete incident cases</h2><p>Start with database, configuration, provider drift, or webhook replay. No account gate.</p><Link className="text-link" href="/rehearsals/new">Choose a practice case →</Link></div></article><article><span>02</span><div><p className="eyebrow">BRING REAL CODE</p><h2>Analyze a repository safely</h2><p>Paste a public GitHub URL or upload a project. Anonymous snapshots are temporary.</p><Link className="text-link" href="/repositories">Open repository options →</Link></div></article><article><span>03</span><div><p className="eyebrow">SAVE THE PATTERN</p><h2>Build a readiness record</h2><p>Sign in to retain scores, preferences, reports, and filtered repository snapshots.</p><Link className="text-link" href={chatGPTSignInPath("/dashboard")}>Create your account record →</Link></div></article></div>
+      <section className="guest-dashboard-hero"><div><p className="eyebrow">OPTIONAL ACCOUNT</p><h1>Your incident readiness, over time.</h1><p>Practice stays public. Sign in only when you want each verified result to become part of a personal readiness record.</p><div className="actions"><Link className="button button-accent" href={signInPath("/dashboard")}>Choose a sign-in method →</Link><Link className="button guest-hero-ghost" href="/rehearsals/new">Practice without an account</Link></div></div><div className="guest-score-card"><div><span>READINESS PROFILE</span><b>—</b></div>{["Diagnosis", "Evidence", "Repair", "Verification", "Prevention"].map((skill, index) => <span key={skill}><small>{skill}</small><i><em style={{ width: `${48 + index * 9}%` }} /></i></span>)}<p>Your verified skill signals appear here after sign-in.</p></div></section>
+      <div className="guest-path-grid"><article><span>01</span><div><p className="eyebrow">PRACTICE NOW</p><h2>Four complete incident cases</h2><p>Start with database, configuration, provider drift, or webhook replay. No account gate.</p><Link className="text-link" href="/rehearsals/new">Choose a practice case →</Link></div></article><article><span>02</span><div><p className="eyebrow">BRING REAL CODE</p><h2>Analyze a repository safely</h2><p>Paste a public GitHub URL or upload a project. Anonymous snapshots are temporary.</p><Link className="text-link" href="/repositories">Open repository options →</Link></div></article><article><span>03</span><div><p className="eyebrow">SAVE THE PATTERN</p><h2>Build a readiness record</h2><p>Sign in to retain scores, preferences, reports, and filtered repository snapshots.</p><Link className="text-link" href={signInPath("/dashboard")}>Create your account record →</Link></div></article></div>
     </main>;
   }
   const data = await getAccountDashboard(user.email, user.displayName);

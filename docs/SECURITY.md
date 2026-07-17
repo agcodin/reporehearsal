@@ -2,15 +2,15 @@
 
 ## Isolation and authorization
 
-Every imported repository is an immutable, filtered R2 snapshot. Every rehearsal receives a new working-copy object and a unique 32-byte access token. Only a matching token hash or the owning ChatGPT account can access it. Active sessions expire at the selected time limit; completed and expired working copies are deleted.
+Every imported repository is an immutable, filtered R2 snapshot. Every rehearsal receives a new working-copy object and a unique 32-byte access token. Only a matching token hash or the owning account can access it. Active sessions expire at the selected time limit; completed and expired working copies are deleted.
 
 The Sites worker uses a curated virtual command adapter: approved command IDs produce deterministic scenario checks and evidence. It never executes uploaded shell code, installs dependencies, follows repository instructions, or exposes a Docker socket. Arbitrary execution belongs on a separately patched and quota-controlled sandbox host.
 
 ## Authentication and account data
 
-Public product, intake, and rehearsal routes do not require an account. ChatGPT identity is read from trusted hosting headers; client-supplied email/account IDs are never authorization inputs. Account-owned snapshots persist for reuse. Anonymous snapshots expire after 24 hours. The repository DELETE API removes the R2 object and matching metadata.
+Public product, intake, and rehearsal routes do not require an account. ChatGPT identity is read from trusted hosting headers. Google and GitHub use server-side authorization-code flows with PKCE, unguessable one-time state records, exact callback URLs, verified emails, and HttpOnly/Secure/SameSite application cookies. Session and OAuth-state tokens are hashed before D1 persistence. Provider access tokens exist only while the callback fetches identity and are never stored. Client-supplied email/account IDs are never authorization inputs. Account-owned snapshots persist for reuse. Anonymous snapshots expire after 24 hours. The repository DELETE API removes the R2 object and matching metadata.
 
-Google and GitHub OAuth buttons are not fabricated because Sites currently supplies only ChatGPT sign-in. Public GitHub imports are authorized by repository URL plus the returned opaque session token.
+Provider identities are linked by stable provider subject. On first sign-in, a verified provider email can join an existing account with the same normalized email, preserving saved progress across providers. Public GitHub imports remain separate from GitHub sign-in and are authorized by repository URL plus the returned opaque repository token.
 
 ## Upload and GitHub safety
 

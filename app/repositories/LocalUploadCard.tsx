@@ -58,14 +58,14 @@ export default function LocalUploadCard() {
     sessionStorage.removeItem(`rr-repository-${repository.id}`); setRepository(null); setStatus("idle"); setMessage("");
   }
 
-  return <article className="repo-card local-upload-card">
-    <div className="github-import-heading"><span className="repo-source-mark local-mark">LOCAL</span><div><span className="badge badge-green">LOCAL CODEBASE</span><h2>Upload from your computer</h2></div></div>
-    <p>Select a project folder or ZIP archive. Analysis runs against a read-only copy; generated folders, secrets, keys, binaries, and oversized files are excluded.</p>
+  return <article className="repo-card repository-entry-card local-upload-card">
+    <span className="repository-entry-number">02</span>
+    <div><p className="eyebrow">IMPORT FROM COMPUTER</p><h2>Choose local code</h2><p>Select a project folder or ZIP file.</p></div>
     <div className="local-upload-actions">
-      <label className={`button button-dark ${status === "loading" ? "button-disabled" : ""}`}>Choose project folder<input ref={folderInput} type="file" multiple onChange={chooseFolder} disabled={status === "loading"} /></label>
-      <label className={`button button-ghost ${status === "loading" ? "button-disabled" : ""}`}>Choose ZIP archive<input type="file" accept=".zip,application/zip" onChange={chooseZip} disabled={status === "loading"} /></label>
+      <label className={`button button-dark ${status === "loading" ? "button-disabled" : ""}`}>Choose folder<input ref={folderInput} type="file" multiple onChange={chooseFolder} disabled={status === "loading"} /></label>
+      <label className={`button button-ghost ${status === "loading" ? "button-disabled" : ""}`}>Choose ZIP<input type="file" accept=".zip,application/zip" onChange={chooseZip} disabled={status === "loading"} /></label>
     </div>
-    <small>{plan.name} preview · {formatBytes(plan.limits.repositoryUploadBytes)} expanded · {plan.limits.repositoryFiles.toLocaleString()} files · supported text source and configuration files</small>
+    <small>Up to {formatBytes(plan.limits.repositoryUploadBytes)} · secrets are excluded</small>
     {status === "loading" && <div className="upload-progress" role="status"><span className="pulse" /> Reading and mapping the codebase…</div>}
     {status === "error" && <div className="import-result import-error" role="alert"><b>Upload stopped safely</b><p>{message}</p></div>}
     {repository && <div className="import-result" aria-live="polite"><div className="import-result-head"><div><span className="badge badge-green">ANALYSIS COMPLETE</span><h3>{repository.name}</h3><p>{repository.analyzedFileCount.toLocaleString()} safe text files analyzed from {repository.fileCount.toLocaleString()} selected files.</p></div></div><div className="repo-meta"><div><small>ANALYZED</small><b>{repository.analyzedFileCount.toLocaleString()}</b></div><div><small>SIZE</small><b>{Math.max(1, Math.round(repository.totalBytes / 1024))} KB</b></div><div><small>INCIDENTS</small><b>{repository.compatibleIncidentIds.length}</b></div></div><div className="tag-row">{Object.values(repository.stack).filter(value => value !== "unknown").map(value => <span className="tag" key={value}>{value}</span>)}</div><p>{message}</p>{repository.warnings.map(warning => <p className="import-warning" key={warning}>{warning}</p>)}<div className="actions"><button className="button button-blue" onClick={()=>router.push(`/rehearsals/new?repositoryId=${encodeURIComponent(repository.id)}`)}>Create rehearsal →</button><button className="button button-ghost" onClick={remove}>Remove stored copy</button></div></div>}

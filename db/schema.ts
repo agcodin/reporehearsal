@@ -10,6 +10,34 @@ export const accounts = sqliteTable("accounts", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const authIdentities = sqliteTable("auth_identities", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  provider: text("provider", { enum: ["google", "github"] }).notNull(),
+  providerSubject: text("provider_subject").notNull(),
+  createdAt: text("created_at").notNull(),
+  lastSignedInAt: text("last_signed_in_at").notNull(),
+}, table => [
+  uniqueIndex("auth_identities_provider_subject_unique").on(table.provider, table.providerSubject),
+  index("auth_identities_account_idx").on(table.accountId),
+]);
+
+export const authSessions = sqliteTable("auth_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  provider: text("provider", { enum: ["google", "github"] }).notNull(),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+}, table => [index("auth_sessions_expiry_idx").on(table.expiresAt)]);
+
+export const authLoginAttempts = sqliteTable("auth_login_attempts", {
+  stateHash: text("state_hash").primaryKey(),
+  provider: text("provider", { enum: ["google", "github"] }).notNull(),
+  codeVerifier: text("code_verifier").notNull(),
+  returnTo: text("return_to").notNull(),
+  expiresAt: text("expires_at").notNull(),
+}, table => [index("auth_login_attempts_expiry_idx").on(table.expiresAt)]);
+
 export const accountRehearsals = sqliteTable("account_rehearsals", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),

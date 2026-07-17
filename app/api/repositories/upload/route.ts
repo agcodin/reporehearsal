@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getChatGPTUser } from "../../../chatgpt-auth";
+import { getAuthenticatedUser } from "../../../auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
 import { analyzeUploadedFiles, extractZipUpload, RepositoryUploadError, validateFolderUpload, type UploadedFile } from "../../../../src/repositories/upload/analyzer";
 import { formatBytes, planFromRequest } from "../../../../src/billing/plans";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       files = validateFolderUpload(await Promise.all(rawFiles.map(async (file, index) => ({ path: paths[index] as string, bytes: new Uint8Array(await file.arrayBuffer()) }))), plan.limits);
     }
     const repository = analyzeUploadedFiles(name, files, sourceFileCount);
-    const user = await getChatGPTUser();
+    const user = await getAuthenticatedUser();
     const decoder = new TextDecoder("utf-8", { fatal: true }); const workspaceFiles: { path: string; content: string }[] = [];
     for (const file of files) { try { workspaceFiles.push({ path: file.path, content: decoder.decode(file.bytes) }); } catch { /* Invalid text files remain excluded. */ } }
     const stored = await saveRepository(user ? { email: user.email, displayName: user.displayName } : null, { id: repository.id, source: "UPLOAD", externalRef: null, name: repository.name, analysis: repository as unknown as Record<string, unknown>, files: workspaceFiles });

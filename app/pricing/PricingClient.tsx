@@ -13,7 +13,7 @@ const featureRows: { group: string; label: string; detail: string; included: Rec
   { group: "REPORTING", label: "Basic after-action report", detail: "Root cause, evidence used, validation results, and prevention", included: { FREE: true, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "REPORTING", label: "Advanced skill analysis", detail: "Diagnosis, evidence, repair, verification, and prevention signals", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "PERSONAL", label: "Interview mode", detail: "Timed practice with hints disabled and communication scoring", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
-  { group: "PERSONAL", label: "Saved progress with ChatGPT", detail: "Keep rehearsal history, preferences, and readiness metrics", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
+  { group: "PERSONAL", label: "Saved account progress", detail: "Keep rehearsal history, preferences, and readiness metrics", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "PERSONAL", label: "Reusable repository library", detail: "Retain safe source snapshots for future rehearsals", included: { FREE: false, PRO: true, TEAM: true, ENTERPRISE: true } },
   { group: "TEAM", label: "Team readiness dashboard", detail: "See completion, performance, and recurring skill gaps", included: { FREE: false, PRO: false, TEAM: true, ENTERPRISE: true } },
   { group: "TEAM", label: "Learning-path assignments", detail: "Assign focused database, systems, and provider practice", included: { FREE: false, PRO: false, TEAM: true, ENTERPRISE: true } },

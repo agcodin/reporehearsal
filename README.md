@@ -20,7 +20,7 @@ Developers often practice incident response for the first time during a real out
 - Deterministic validation and reporting that need neither an OpenAI key nor a private repository; configured OpenAI structured output can enhance coaching prose.
 - Safe public GitHub repository import with strict URL, size, file-count, path, symlink, and submodule controls.
 - Local folder and ZIP analysis with traversal, expansion, file-count, secret, binary, and generated-file controls.
-- Optional ChatGPT sign-in with persistent profiles, preferences, results, reusable repository snapshots, and real empty/history states.
+- Optional ChatGPT, Google, or GitHub sign-in with persistent profiles, preferences, results, reusable repository snapshots, and real empty/history states.
 - Interview mode with a visible countdown, disabled coaching, and interviewer-focused reporting.
 
 ## Architecture
@@ -70,11 +70,20 @@ docker compose -f demo-repositories/billing-service/docker-compose.yml up --buil
 
 ## Environment variables
 
-Copy `.env.example`. `OPENAI_API_KEY` is optional and `OPENAI_MODEL` defaults to `gpt-5.6`. `CLEANUP_SECRET` protects the scheduled cleanup endpoint. Sites supplies the D1 `DB` and R2 `REPOSITORIES` bindings. Never commit `.env`.
+Copy `.env.example`. `OPENAI_API_KEY` is optional and `OPENAI_MODEL` defaults to `gpt-5.6`. `CLEANUP_SECRET` protects the scheduled cleanup endpoint. Google and GitHub sign-in require their respective `*_OAUTH_CLIENT_ID` and `*_OAUTH_CLIENT_SECRET` values. Cloudflare supplies the D1 `DB` and R2 `REPOSITORIES` bindings. Never commit `.env` or OAuth credentials.
 
 ## Accounts and demo mode
 
-No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Anonymous repository snapshots expire after 24 hours and are authorized by an opaque browser-session token. Sign in with ChatGPT to save results, preferences, and reusable snapshots. Passwords are handled by ChatGPT and are never received or stored by RepoRehearsal.
+No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Anonymous repository snapshots expire after 24 hours and are authorized by an opaque browser-session token. Sign in with ChatGPT, Google, or GitHub to save results, preferences, and reusable snapshots. RepoRehearsal accepts only verified provider emails, stores provider access tokens only in memory for the callback request, and persists only a provider subject plus a hashed application session token. Provider passwords and access tokens are never stored.
+
+### OAuth callback URLs
+
+Register web OAuth clients with these production callback URLs:
+
+- Google: `https://repo-rehearsal.aryangaur926.workers.dev/auth/google/callback`
+- GitHub: `https://repo-rehearsal.aryangaur926.workers.dev/auth/github/callback`
+
+For local OAuth testing, create separate development clients with `http://localhost:3000/auth/google/callback` and `http://localhost:3000/auth/github/callback`. Set the four OAuth values as Cloudflare Worker secrets in production. Apply D1 migrations before deploying a version that enables these providers.
 
 ## How fault injection works
 
@@ -128,14 +137,14 @@ Choose **Interview mode** while configuring a rehearsal. The workspace displays 
 
 ## Known limitations
 
-- Sites does not expose Google or GitHub OAuth configuration, so the deployed account provider is ChatGPT only. Public GitHub URLs and local uploads remain account-optional.
+- Google and GitHub buttons remain disabled until both credentials for that provider are configured. OAuth clients must use an exact callback URL for the deployed origin.
 - The hosted worker intentionally does not execute arbitrary uploaded commands. It validates repository-derived behavior contracts and source diffs; full native/container test execution requires a separate hardened sandbox service with network policy, quotas, patching, and audit logs.
 - The workspace editor is a focused textarea implementation rather than Monaco.
 - OpenAI report enhancement activates only when `OPENAI_API_KEY` is configured; deterministic validation and reports remain fully functional without it.
 
 ## Future work
 
-Authorized private GitHub connections and additional identity providers when the hosting platform exposes OAuth, plus organization-specific templates, team incident rooms, a hardened remote execution adapter, Kubernetes scenarios, and additional language adapters.
+Authorized private GitHub connections, account unlinking/deletion controls, organization-specific templates, team incident rooms, a hardened remote execution adapter, Kubernetes scenarios, and additional language adapters.
 
 ## Screenshots and demo
 
