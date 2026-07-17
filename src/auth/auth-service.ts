@@ -10,6 +10,17 @@ export type AuthenticatedUser = {
   provider: AuthProvider;
 };
 
+export type GitHubRepositorySummary = {
+  id: string;
+  name: string;
+  fullName: string;
+  sourceUrl: string;
+  description: string | null;
+  language: string | null;
+  defaultBranch: string;
+  updatedAt: string;
+};
+
 const LOGIN_ATTEMPT_TTL_MS = 10 * 60_000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60_000;
 
@@ -47,6 +58,20 @@ export async function ensureAuthSchema(): Promise<void> {
       expires_at TEXT NOT NULL
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS auth_login_attempts_expiry_idx ON auth_login_attempts(expires_at)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS github_repository_catalog (
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      repository_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      description TEXT,
+      language TEXT,
+      default_branch TEXT NOT NULL,
+      repository_updated_at TEXT NOT NULL,
+      synced_at TEXT NOT NULL,
+      PRIMARY KEY (account_id, repository_id)
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS github_repository_catalog_account_updated_idx ON github_repository_catalog(account_id, repository_updated_at DESC)"),
   ]);
 }
 
@@ -80,6 +105,7 @@ export async function createAuthSession(input: {
   subject: string;
   email: string;
   displayName: string;
+  githubRepositories?: GitHubRepositorySummary[];
 }): Promise<{ token: string; expiresAt: string; user: AuthenticatedUser }> {
   await ensureAuthSchema();
   const db = database();
@@ -106,6 +132,10 @@ export async function createAuthSession(input: {
       .run();
   }
 
+  if (input.provider === "github" && input.githubRepositories) {
+    await syncGitHubRepositoryCatalog(account.id, input.githubRepositories);
+  }
+
   const token = randomToken(48);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   await db.batch([
@@ -118,6 +148,29 @@ export async function createAuthSession(input: {
     expiresAt,
     user: { email: account.email, displayName: account.display_name, fullName: account.display_name, provider: input.provider },
   };
+}
+
+async function syncGitHubRepositoryCatalog(accountId: string, repositories: GitHubRepositorySummary[]): Promise<void> {
+  const db = database();
+  const syncedAt = new Date().toISOString();
+  const statements = [db.prepare("DELETE FROM github_repository_catalog WHERE account_id = ?").bind(accountId)];
+  for (const repository of repositories.slice(0, 100)) {
+    statements.push(db.prepare(`INSERT INTO github_repository_catalog (
+      account_id, repository_id, name, full_name, source_url, description, language, default_branch, repository_updated_at, synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(accountId, repository.id, repository.name, repository.fullName, repository.sourceUrl, repository.description, repository.language, repository.defaultBranch, repository.updatedAt, syncedAt));
+  }
+  await db.batch(statements);
+}
+
+export async function listGitHubRepositoryCatalog(email: string, displayName: string): Promise<GitHubRepositorySummary[]> {
+  await ensureAuthSchema();
+  const account = await ensureAccount(email, displayName);
+  const result = await database().prepare(`SELECT repository_id, name, full_name, source_url, description, language, default_branch, repository_updated_at
+    FROM github_repository_catalog WHERE account_id = ? ORDER BY repository_updated_at DESC LIMIT 100`)
+    .bind(account.id)
+    .all<{ repository_id: string; name: string; full_name: string; source_url: string; description: string | null; language: string | null; default_branch: string; repository_updated_at: string }>();
+  return (result.results ?? []).map(row => ({ id: row.repository_id, name: row.name, fullName: row.full_name, sourceUrl: row.source_url, description: row.description, language: row.language, defaultBranch: row.default_branch, updatedAt: row.repository_updated_at }));
 }
 
 export async function getAuthSession(token: string): Promise<AuthenticatedUser | null> {

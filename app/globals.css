@@ -142,3 +142,7 @@ input,textarea,select{border-radius:7px!important}input:focus,textarea:focus,sel
 .microcopy,.trust-strip span,.trust-strip b,.steps article>span,.footer-note{color:#555853}
 .feature-table thead th:first-child{color:#555853}
 .feature-dash{color:#555853}
+
+/* Account-gated repository intake and connected GitHub picker. */
+.repository-account-gate>div:last-child{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px}.repository-account-gate>div:last-child p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.github-import-options{display:grid;gap:14px}.connected-repository-form{padding-bottom:14px;border-bottom:1px solid var(--line)}.connected-repository-form label,.github-url-label{display:block;margin-bottom:7px;color:var(--ink);font-size:12px;font-weight:650}.connected-repository-form>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.connected-repository-form select{min-width:0;width:100%;padding:10px 12px;border:1px solid #b8bbb4;background:#fff;color:var(--ink)}
+@media(max-width:700px){.repository-account-gate>div:last-child,.connected-repository-form>div{grid-template-columns:1fr}.repository-account-gate .button{width:100%}}

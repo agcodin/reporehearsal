@@ -38,6 +38,22 @@ export const authLoginAttempts = sqliteTable("auth_login_attempts", {
   expiresAt: text("expires_at").notNull(),
 }, table => [index("auth_login_attempts_expiry_idx").on(table.expiresAt)]);
 
+export const githubRepositoryCatalog = sqliteTable("github_repository_catalog", {
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  repositoryId: text("repository_id").notNull(),
+  name: text("name").notNull(),
+  fullName: text("full_name").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  description: text("description"),
+  language: text("language"),
+  defaultBranch: text("default_branch").notNull(),
+  repositoryUpdatedAt: text("repository_updated_at").notNull(),
+  syncedAt: text("synced_at").notNull(),
+}, table => [
+  uniqueIndex("github_repository_catalog_account_repository_unique").on(table.accountId, table.repositoryId),
+  index("github_repository_catalog_account_updated_idx").on(table.accountId, table.repositoryUpdatedAt),
+]);
+
 export const accountRehearsals = sqliteTable("account_rehearsals", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),

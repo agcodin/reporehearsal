@@ -1,7 +1,7 @@
-import type { AuthProvider } from "./auth-service";
+import type { AuthProvider, GitHubRepositorySummary } from "./auth-service";
 
 type OAuthProvider = Exclude<AuthProvider, "chatgpt">;
-type ProviderIdentity = { subject: string; email: string; displayName: string };
+type ProviderIdentity = { subject: string; email: string; displayName: string; githubRepositories?: GitHubRepositorySummary[] };
 
 export class OAuthProviderError extends Error {
   constructor(public readonly code: string, message: string) { super(message); }
@@ -96,16 +96,22 @@ async function githubIdentity(configured: { clientId: string; clientSecret: stri
   const tokens = await readJson<{ access_token?: string; token_type?: string; error?: string }>(tokenResponse);
   if (!tokenResponse.ok || !tokens.access_token) throw new OAuthProviderError("TOKEN_EXCHANGE_FAILED", "GitHub did not accept the authorization response.");
   const headers = { Authorization: `Bearer ${tokens.access_token}`, Accept: "application/vnd.github+json", "User-Agent": "RepoRehearsal", "X-GitHub-Api-Version": "2022-11-28" };
-  const [profileResponse, emailsResponse] = await Promise.all([
+  const [profileResponse, emailsResponse, repositoriesResponse] = await Promise.all([
     fetch("https://api.github.com/user", { headers }),
     fetch("https://api.github.com/user/emails", { headers }),
+    fetch("https://api.github.com/user/repos?visibility=public&affiliation=owner&sort=updated&per_page=100", { headers }),
   ]);
   const profile = await readJson<{ id?: number; login?: string; name?: string }>(profileResponse);
   const emails = await readJson<Array<{ email?: string; primary?: boolean; verified?: boolean }>>(emailsResponse);
+  const repositories = await readJson<Array<{ id?: number; name?: string; full_name?: string; html_url?: string; description?: string | null; language?: string | null; default_branch?: string; updated_at?: string; private?: boolean }>>(repositoriesResponse, 1024 * 1024);
   const verified = Array.isArray(emails) ? emails.filter(item => item.verified && item.email) : [];
   const email = verified.find(item => item.primary)?.email ?? verified[0]?.email;
   if (!profileResponse.ok || !emailsResponse.ok || !profile.id || !email) throw new OAuthProviderError("VERIFIED_EMAIL_REQUIRED", "GitHub did not provide a verified email address.");
-  return { subject: String(profile.id), email: email.toLowerCase(), displayName: profile.name?.trim() || profile.login?.trim() || email.split("@")[0] };
+  const githubRepositories = repositoriesResponse.ok && Array.isArray(repositories) ? repositories.flatMap(repository => {
+    if (repository.private || !repository.id || !repository.name || !repository.full_name || !repository.html_url) return [];
+    return [{ id: String(repository.id), name: repository.name, fullName: repository.full_name, sourceUrl: repository.html_url, description: repository.description ?? null, language: repository.language ?? null, defaultBranch: repository.default_branch ?? "main", updatedAt: repository.updated_at ?? new Date(0).toISOString() }];
+  }) : [];
+  return { subject: String(profile.id), email: email.toLowerCase(), displayName: profile.name?.trim() || profile.login?.trim() || email.split("@")[0], githubRepositories };
 }
 
 async function readJson<T>(response: Response, maxBytes = 128 * 1024): Promise<T> {

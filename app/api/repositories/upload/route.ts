@@ -9,6 +9,8 @@ import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-
 export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) return NextResponse.json({ error: { code: "ACCOUNT_REQUIRED", message: "Sign in before uploading a codebase.", correlationId } }, { status: 401 });
     await consumeRateLimit(request, "repository-upload", 10, 3_600);
     const plan = planFromRequest(request);
     const contentLength = Number(request.headers.get("content-length") ?? 0);
@@ -34,12 +36,11 @@ export async function POST(request: Request) {
       files = validateFolderUpload(await Promise.all(rawFiles.map(async (file, index) => ({ path: paths[index] as string, bytes: new Uint8Array(await file.arrayBuffer()) }))), plan.limits);
     }
     const repository = analyzeUploadedFiles(name, files, sourceFileCount);
-    const user = await getAuthenticatedUser();
     const decoder = new TextDecoder("utf-8", { fatal: true }); const workspaceFiles: { path: string; content: string }[] = [];
     for (const file of files) { try { workspaceFiles.push({ path: file.path, content: decoder.decode(file.bytes) }); } catch { /* Invalid text files remain excluded. */ } }
-    const stored = await saveRepository(user ? { email: user.email, displayName: user.displayName } : null, { id: repository.id, source: "UPLOAD", externalRef: null, name: repository.name, analysis: repository as unknown as Record<string, unknown>, files: workspaceFiles });
-    if (user) await saveAccountRepository(user.email, user.displayName, { id: repository.id, source: "UPLOAD", externalId: null, name: repository.name, displayRef: `${repository.fileCount} local files`, ...repository.stack, fileCount: repository.fileCount });
-    return NextResponse.json({ repository, accessToken: stored.accessToken, savedToAccount: Boolean(user), sourceModified: false, correlationId });
+    const stored = await saveRepository({ email: user.email, displayName: user.displayName }, { id: repository.id, source: "UPLOAD", externalRef: null, name: repository.name, analysis: repository as unknown as Record<string, unknown>, files: workspaceFiles });
+    await saveAccountRepository(user.email, user.displayName, { id: repository.id, source: "UPLOAD", externalId: null, name: repository.name, displayRef: `${repository.fileCount} local files`, ...repository.stack, fileCount: repository.fileCount });
+    return NextResponse.json({ repository, accessToken: stored.accessToken, savedToAccount: true, sourceModified: false, correlationId });
   } catch (error) {
     if (error instanceof RateLimitError) return NextResponse.json({ error: { code: "RATE_LIMITED", message: error.message, correlationId } }, { status: 429, headers: { "Retry-After": String(error.retryAfter) } });
     if (error instanceof RepositoryUploadError) return NextResponse.json({ error: { code: error.code, message: error.message, correlationId } }, { status: error.status });
