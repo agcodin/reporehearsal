@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import AuthNavigation from "./components/AuthNavigation";
+import MobileNavigation from "./components/MobileNavigation";
 import PlanNavigation from "./components/PlanNavigation";
 import PlanProvider from "./components/PlanProvider";
 import "./globals.css";
@@ -25,9 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PlanProvider>
         <header className="site-header">
           <Link className="brand" href="/" aria-label="RepoRehearsal home"><span className="brand-mark">RR</span><span>RepoRehearsal</span></Link>
-          <nav aria-label="Primary navigation">
+          <nav className="desktop-navigation" aria-label="Primary navigation">
             <Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/about">About</Link>
           </nav>
+          <MobileNavigation />
           <div className="header-actions"><PlanNavigation /><Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense></div>
         </header>
         {children}

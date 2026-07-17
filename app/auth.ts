@@ -11,8 +11,6 @@ const USER_EMAIL_HEADER = "oai-authenticated-user-email";
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER = "oai-authenticated-user-full-name-encoding";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
-const CHATGPT_SIGN_IN_PATH = "/signin-with-chatgpt";
-const CHATGPT_SIGN_OUT_PATH = "/signout-with-chatgpt";
 
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const sessionToken = (await cookies()).get(AUTH_SESSION_COOKIE)?.value;
@@ -45,16 +43,8 @@ export function oauthSignInPath(provider: Exclude<AuthProvider, "chatgpt">, retu
   return `/auth/${provider}?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
 }
 
-export function chatGPTSignInPath(returnTo: string): string {
-  return `${CHATGPT_SIGN_IN_PATH}?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
-}
-
 export function signOutPath(returnTo = "/"): string {
   return `/auth/signout?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
-}
-
-export function chatGPTSignOutPath(returnTo = "/"): string {
-  return `${CHATGPT_SIGN_OUT_PATH}?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`;
 }
 
 export function safeRelativeReturnPath(value: string | null | undefined): string {
@@ -70,7 +60,7 @@ export function providerLabel(provider: AuthProvider): string {
 }
 
 function isReservedAuthPath(pathname: string): boolean {
-  return pathname === CHATGPT_SIGN_IN_PATH || pathname === CHATGPT_SIGN_OUT_PATH || pathname === "/callback" || pathname === "/signin" || pathname.startsWith("/auth/");
+  return pathname === "/callback" || pathname === "/signin" || pathname.startsWith("/auth/");
 }
 
 function safeDecodeURIComponent(value: string): string | null {
