@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const steps = [
-  ["01", "Map the repository", "Identify services, routes, migrations, tests, and reliability risks before selecting an exercise."],
-  ["02", "Break an isolated copy", "Inject a deterministic fault only after the clean baseline passes. Your source stays untouched."],
-  ["03", "Investigate & repair", "Use code, logs, tests, database evidence, and health checks. Then receive a scored report."],
+  ["I", "Map the repository", "Identify services, routes, migrations, tests, and reliability risks before selecting an exercise."],
+  ["II", "Break an isolated copy", "Inject a deterministic fault only after the clean baseline passes. Your source stays untouched."],
+  ["III", "Investigate & repair", "Use code, logs, tests, database evidence, and health checks. Then receive a scored report."],
 ];
 const languages = ["TypeScript", "JavaScript", "Python", "Java", "C", "C++", "C#", "Go", "Rust", "Ruby", "PHP", "Kotlin", "Swift", "Scala"];
 
