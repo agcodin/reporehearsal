@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useMemo, useRef } from "react";
+import { KeyboardEvent, SyntheticEvent, useMemo, useRef, useState } from "react";
 
 const keywords = new Set(["as", "async", "await", "break", "case", "catch", "class", "const", "continue", "default", "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for", "from", "function", "if", "implements", "import", "in", "instanceof", "interface", "let", "new", "null", "of", "private", "protected", "public", "readonly", "return", "static", "super", "switch", "this", "throw", "true", "try", "type", "typeof", "undefined", "var", "void", "while", "with", "yield"]);
 const tokenPattern = /(\/\/.*$|\/\*.*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*\b|=>|===?|!==?|&&|\|\||[{}()[\].,:;]|[+\-*/%<>]=?)/g;
@@ -30,10 +30,16 @@ function highlight(line: string, lineIndex: number) {
 export default function CodeEditor({ path, value, onChange, onSave }: { path: string; value: string; onChange: (value: string) => void; onSave: () => void }) {
   const backdrop = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const lines = useMemo(() => value.split("\n"), [value]);
   const language = languageFor(path);
 
   function syncScroll() { if (backdrop.current && textarea.current) { backdrop.current.scrollTop = textarea.current.scrollTop; backdrop.current.scrollLeft = textarea.current.scrollLeft; } }
+  function updateCursor(event: SyntheticEvent<HTMLTextAreaElement>) {
+    const position = event.currentTarget.selectionStart;
+    const beforeCursor = value.slice(0, position).split("\n");
+    setCursor({ line: beforeCursor.length, column: beforeCursor.at(-1)!.length + 1 });
+  }
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") { event.preventDefault(); onSave(); return; }
     if (event.key !== "Tab") return;
@@ -46,8 +52,8 @@ export default function CodeEditor({ path, value, onChange, onSave }: { path: st
   return <div className="source-editor-shell">
     <div className="source-editor-main">
       <div className="source-highlight" ref={backdrop} aria-hidden>{lines.map(highlight)}</div>
-      <textarea ref={textarea} className="source-input" aria-label={`Code editor for ${path}`} spellCheck={false} autoCapitalize="off" autoCorrect="off" value={value} onChange={event => onChange(event.target.value)} onScroll={syncScroll} onKeyDown={keyDown} />
+      <textarea ref={textarea} className="source-input" aria-label={`Code editor for ${path}`} aria-multiline="true" spellCheck={false} autoCapitalize="off" autoCorrect="off" wrap="off" value={value} onChange={event => { onChange(event.target.value); updateCursor(event); }} onSelect={updateCursor} onClick={updateCursor} onKeyUp={updateCursor} onScroll={syncScroll} onKeyDown={keyDown} />
     </div>
-    <div className="source-statusbar"><span>Ln {lines.length}, Col 1</span><span>Spaces: 2</span><span>UTF-8</span><span>LF</span><b>{language}</b></div>
+    <div className="source-statusbar"><span>Ln {cursor.line}, Col {cursor.column}</span><span>Spaces: 2</span><span>UTF-8</span><span>LF</span><b>{language}</b></div>
   </div>;
 }
