@@ -6,7 +6,7 @@ import { usePlan } from "../components/PlanProvider";
 
 const featureRows: { group: string; label: string; detail: string; included: Record<PlanId, boolean | string> }[] = [
   { group: "PRACTICE", label: "Four starter incidents", detail: "Database, configuration, provider drift, and webhook replay cases", included: { FREE: true, PRO: true, TEAM: true } },
-  { group: "PRACTICE", label: "Repository of the day", detail: "The same five-file challenge, prompt, and scoring contract for everyone each day", included: { FREE: true, PRO: true, TEAM: true } },
+  { group: "PRACTICE", label: "Challenge of the Day", detail: "The same five-file challenge, prompt, and scoring contract for everyone each day", included: { FREE: true, PRO: true, TEAM: true } },
   { group: "PRACTICE", label: "Repository imports", detail: "Analyze public GitHub repositories, folders, and ZIP archives after sign-in", included: { FREE: "20 MB", PRO: "75 MB", TEAM: "Unlimited" } },
   { group: "PRACTICE", label: "Curated repository roulette", detail: "Choose or randomly draw from 110 vetted public projects", included: { FREE: false, PRO: true, TEAM: true } },
   { group: "PRACTICE", label: "Language-aware incidents", detail: "Repository-specific issues across major application languages", included: { FREE: true, PRO: true, TEAM: true } },
@@ -14,7 +14,7 @@ const featureRows: { group: string; label: string; detail: string; included: Rec
   { group: "REPORTING", label: "Advanced grading report", detail: "Category rationale, evidence gaps, validation, and prevention", included: { FREE: false, PRO: true, TEAM: true } },
   { group: "PERSONAL", label: "Interview mode", detail: "Timed practice with hints disabled and communication scoring", included: { FREE: false, PRO: true, TEAM: true } },
   { group: "PERSONAL", label: "Saved progress and repository library", detail: "Keep reports, preferences, results, and safe source snapshots", included: { FREE: false, PRO: true, TEAM: true } },
-  { group: "TEAM", label: "Team readiness and assignments", detail: "Manage learning paths, reporting, shared programs, and recurring skill gaps", included: { FREE: false, PRO: false, TEAM: true } },
+  { group: "TEAM", label: "Five member seats and assignments", detail: "Invite five people, assign repositories to everyone or individuals, and review verified results", included: { FREE: false, PRO: false, TEAM: true } },
   { group: "TEAM", label: "Custom incident studio", detail: "Turn operational patterns into controlled training templates", included: { FREE: false, PRO: false, TEAM: true } },
   { group: "TEAM", label: "Security, retention, and audit controls", detail: "Configure safeguards and export program activity for review", included: { FREE: false, PRO: false, TEAM: true } },
 ];

@@ -29,10 +29,10 @@ export const plans: Plan[] = [
     eyebrow: "EXPLORE THE LOOP",
     price: "$0",
     cadence: "forever",
-    description: "Learn the incident workflow with starter cases and the shared repository of the day.",
+    description: "Learn the incident workflow with starter cases and the shared Challenge of the Day.",
     cta: "Use Free",
     href: "/rehearsals/new",
-    features: ["Four production-style incidents", "Repository of the day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
+    features: ["Four production-style incidents", "Challenge of the Day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
     limits: { repositoryUploadBytes: 20 * MB, repositoryFiles: 3_000, maxTextFileBytes: 1 * MB },
   },
   {
@@ -57,7 +57,7 @@ export const plans: Plan[] = [
     description: "Unlimited repository analysis and the complete reliability-training toolkit for teams.",
     cta: "Activate Team preview",
     href: "/team",
-    features: ["Everything in Pro", "Unlimited repository analysis", "Team readiness dashboard", "Learning-path assignments", "Shared rehearsal library", "Manager reporting", "Custom incident studio", "Security and retention controls", "Audit-ready exports", "Facilitated GameDay support"],
+    features: ["Everything in Pro", "Unlimited repository analysis", "Five invited member seats", "Repository assignments", "Team results dashboard", "Shared rehearsal library", "Manager reporting", "Custom incident studio", "Security and retention controls", "Audit-ready exports", "Facilitated GameDay support"],
     limits: { repositoryUploadBytes: null, repositoryFiles: 100_000, maxTextFileBytes: 16 * MB },
   },
 ];

@@ -87,6 +87,37 @@ export const accountRepositories = sqliteTable("account_repositories", {
   updatedAt: text("updated_at").notNull(),
 }, table => [uniqueIndex("account_repositories_source_unique").on(table.accountId, table.source, table.externalId)]);
 
+export const teams = sqliteTable("teams", {
+  id: text("id").primaryKey(),
+  ownerAccountId: text("owner_account_id").notNull().unique().references(() => accounts.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const teamMembers = sqliteTable("team_members", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
+  email: text("email").notNull(),
+  displayName: text("display_name").notNull(),
+  role: text("role", { enum: ["OWNER", "MEMBER"] }).notNull(),
+  status: text("status", { enum: ["ACTIVE", "INVITED"] }).notNull(),
+  invitedAt: text("invited_at").notNull(),
+  joinedAt: text("joined_at"),
+}, table => [uniqueIndex("team_members_team_email_unique").on(table.teamId, table.email)]);
+
+export const teamAssignments = sqliteTable("team_assignments", {
+  id: text("id").primaryKey(),
+  teamId: text("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  repositoryId: text("repository_id").notNull(),
+  repositoryName: text("repository_name").notNull(),
+  incidentTemplateId: text("incident_template_id").notNull(),
+  incidentName: text("incident_name").notNull(),
+  assignedToEmail: text("assigned_to_email").notNull(),
+  createdAt: text("created_at").notNull(),
+}, table => [index("team_assignments_team_date_idx").on(table.teamId, table.createdAt)]);
+
 export const repositories = sqliteTable("repositories", {
   id: text("id").primaryKey(),
   ownerAccountId: text("owner_account_id").references(() => accounts.id, { onDelete: "cascade" }),

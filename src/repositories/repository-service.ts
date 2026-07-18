@@ -56,7 +56,7 @@ export async function saveRepository(user: RepositoryUser, input: { id?: string;
 
 export async function getRepository(id: string, user: RepositoryUser, token?: string | null): Promise<StoredRepository> {
   if (id === repositoryMap.repositoryId) return { id, ownerAccountId: null, source: "DEMO", externalRef: null, name: repositoryMap.name, analysis: repositoryMap as unknown as Record<string, unknown>, objectKey: "builtin://billing-demo", fileCount: demoFiles.length, createdAt: "2026-07-15T00:00:00.000Z", expiresAt: null };
-  if (id === DAILY_REPOSITORY_ID) return { id, ownerAccountId: null, source: "DEMO", externalRef: null, name: "Repository of the Day", analysis: { daily: true, fileCount: 5 }, objectKey: "builtin://repository-of-the-day", fileCount: dailyFiles.length, createdAt: new Date().toISOString(), expiresAt: null };
+  if (id === DAILY_REPOSITORY_ID) return { id, ownerAccountId: null, source: "DEMO", externalRef: null, name: "Challenge of the Day", analysis: { daily: true, fileCount: 5 }, objectKey: "builtin://repository-of-the-day", fileCount: dailyFiles.length, createdAt: new Date().toISOString(), expiresAt: null };
   await ensureRepositorySchema();
   const row = await runtimeDatabase().prepare("SELECT id, owner_account_id, access_token_hash, source, external_ref, name, analysis_json, object_key, file_count, created_at, expires_at FROM repositories WHERE id = ?").bind(id).first<RepositoryRow>();
   if (!row) throw new RepositoryAccessError("NOT_FOUND", "Repository not found.", 404);

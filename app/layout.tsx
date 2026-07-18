@@ -27,13 +27,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="site-header">
           <Link className="brand" href="/" aria-label="RepoRehearsal home"><span className="brand-mark">RR</span><span>RepoRehearsal</span></Link>
           <nav className="desktop-navigation" aria-label="Primary navigation">
-            <Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/about">About</Link>
+            <Link className="daily-nav-link" href="/daily">Challenge of the Day</Link><Link href="/dashboard">Dashboard</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/about">About</Link>
           </nav>
           <MobileNavigation />
           <div className="header-actions"><PlanNavigation /><Suspense fallback={<span className="auth-loading" aria-hidden />}><AuthNavigation /></Suspense></div>
         </header>
         {children}
-        <footer><div className="footer-brand"><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Practice production incidents without risking production.</p></div><nav className="footer-nav" aria-label="Footer navigation"><Link href="/rehearsals/new">Practice</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/privacy">Privacy</Link><Link href="/about">About</Link></nav><p className="footer-note">Original repositories are never modified.</p></footer>
+        <footer><div className="footer-brand"><div className="brand"><span className="brand-mark">RR</span><span>RepoRehearsal</span></div><p>Practice production incidents without risking production.</p></div><nav className="footer-nav" aria-label="Footer navigation"><Link href="/daily">Daily challenge</Link><Link href="/rehearsals/new">Practice</Link><Link href="/repositories">Repositories</Link><Link href="/pricing">Pricing</Link><Link href="/privacy">Privacy</Link><Link href="/about">About</Link></nav><p className="footer-note">Original repositories are never modified.</p></footer>
         </PlanProvider>
       </body>
     </html>

@@ -1,39 +1,91 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { usePlan } from "../components/PlanProvider";
 
-type Assignment = { id: string; name: string; track: string; target: string };
-const catalog = [
-  { name: "Safe database rollouts", track: "Database reliability", target: "Required field migration" },
-  { name: "Service boundary diagnosis", track: "Distributed systems", target: "Container host mismatch" },
-  { name: "Third-party resilience", track: "Provider reliability", target: "Provider schema drift" },
-];
+type Member = { id: string; email: string; displayName: string; role: "OWNER" | "MEMBER"; status: "ACTIVE" | "INVITED"; invitedAt: string; joinedAt: string | null };
+type Assignment = { id: string; repositoryId: string; repositoryName: string; incidentTemplateId: string; incidentName: string; assignedToEmail: string; createdAt: string };
+type Repository = { id: string; name: string; displayRef: string; language: string; fileCount: number };
+type Result = { id: string; memberEmail: string; displayName: string; incidentName: string; repositoryName: string; score: number; durationMinutes: number; status: "COMPLETED" | "UNRESOLVED"; completedAt: string };
+type TeamData = { team: { id: string; name: string; seatLimit: number; seatsUsed: number }; members: Member[]; assignments: Assignment[]; repositories: Repository[]; results: Result[] };
+
+const incidents = [
+  ["db-required-field-migration-v1", "Required field migration"],
+  ["container-host-config-v1", "Container host mismatch"],
+  ["provider-schema-drift-v1", "Provider schema drift"],
+  ["webhook-replay-idempotency-v1", "Webhook replay duplicates charges"],
+] as const;
 
 export default function TeamWorkspace() {
   const { includes, activate } = usePlan();
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [ready, setReady] = useState(false);
+  const [data, setData] = useState<TeamData | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [email, setEmail] = useState("");
+  const [repositoryId, setRepositoryId] = useState("challenge-of-the-day");
+  const [incidentId, setIncidentId] = useState(incidents[0][0]);
+  const [assignee, setAssignee] = useState("all");
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const stored = window.localStorage.getItem("rr-team-assignments");
-      if (stored) { try { setAssignments(JSON.parse(stored)); } catch { /* ignore malformed device state */ } }
-      setReady(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-  function add(item: typeof catalog[number]) {
-    const next = [...assignments, { ...item, id: crypto.randomUUID() }];
-    setAssignments(next); window.localStorage.setItem("rr-team-assignments", JSON.stringify(next));
+    if (!includes("TEAM")) { setLoading(false); return; }
+    let active = true;
+    fetch("/api/team").then(async response => {
+      const body = await response.json();
+      if (!response.ok) throw Object.assign(new Error(body.error?.message ?? "The team workspace could not be loaded."), { status: response.status });
+      if (active) setData(body);
+    }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "The team workspace could not be loaded."); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [includes]);
+
+  async function act(payload: Record<string, string>, key: string) {
+    setBusy(key); setError("");
+    try {
+      const response = await fetch("/api/team", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error?.message ?? "The team could not be updated.");
+      setData(body);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The team could not be updated."); }
+    finally { setBusy(""); }
   }
 
-  if (!includes("TEAM")) return <main className="app-page"><section className="feature-gate"><span className="badge badge-blue">TEAM FEATURE</span><h1>Turn practice into a readiness program.</h1><p>Activate the Team preview to create learning-path assignments and open the manager dashboard. Billing is not connected.</p><div className="actions"><button className="button button-blue" onClick={() => activate("TEAM")}>Activate Team preview →</button><Link className="button button-ghost" href="/pricing">Compare plans</Link></div></section></main>;
+  async function invite(event: FormEvent) {
+    event.preventDefault();
+    await act({ action: "invite", email }, "invite");
+    setEmail("");
+  }
 
-  return <main className="app-page product-dashboard"><div className="page-title-row product-intro"><div><p className="eyebrow">TEAM READINESS</p><h1>Reliability practice program</h1><p>Create assignments now. Member invitations and billing will connect after the preview period.</p></div><span className="badge badge-green">TEAM PREVIEW ACTIVE</span></div>
-    <section className="grid-4"><div className="stat-card"><small>ASSIGNMENTS</small><strong>{assignments.length}</strong><span className="delta">Created on this device</span></div><div className="stat-card"><small>AVAILABLE CASES</small><strong>4</strong><span className="delta">Across 3 categories</span></div><div className="stat-card"><small>TEAM MEMBERS</small><strong>—</strong><span className="delta">Connect after billing</span></div><div className="stat-card"><small>READINESS SCORE</small><strong>—</strong><span className="delta">Begins after submissions</span></div></section>
-    <div className="team-grid"><section className="panel"><span className="panel-label">ACTIVE ASSIGNMENTS</span><h2>Your learning paths</h2>{ready && assignments.length ? assignments.map(item => <div className="assignment-row" key={item.id}><span className="repo-source-mark compact">LP</span><div><b>{item.name}</b><p>{item.track} · {item.target}</p></div><span>READY</span></div>) : <div className="empty-state"><span className="step-icon">01</span><h3>No assignments yet</h3><p>Add a learning path from the catalog. It will be ready to assign when team membership is connected.</p></div>}</section>
-      <aside className="panel assignment-catalog"><span className="panel-label">LEARNING-PATH CATALOG</span><h2>Assign focused practice</h2>{catalog.map(item => <article key={item.name}><div><b>{item.name}</b><p>{item.track}<br />Starts with {item.target}</p></div><button className="button button-ghost button-small" onClick={() => add(item)}>Add path</button></article>)}<Link className="button button-dark" href="/team/studio">Open custom incident studio</Link></aside></div>
+  async function assign(event: FormEvent) {
+    event.preventDefault();
+    const incident = incidents.find(item => item[0] === incidentId) ?? incidents[0];
+    await act({ action: "create-assignment", repositoryId, incidentTemplateId: incident[0], incidentName: incident[1], assignedToEmail: assignee }, "assignment");
+  }
+
+  if (!includes("TEAM")) return <main className="app-page"><section className="feature-gate"><span className="badge badge-blue">TEAM FEATURE</span><h1>Manage practice across a five-person team.</h1><p>Activate the Team preview to invite members, assign repositories, and review verified results. Billing is not connected.</p><div className="actions"><button className="button button-blue" onClick={() => activate("TEAM")}>Activate Team preview →</button><Link className="button button-ghost" href="/pricing">Compare plans</Link></div></section></main>;
+
+  if (loading) return <main className="app-page"><div className="account-loading"><span className="pulse" /> Loading team workspace…</div></main>;
+  if (!data) return <main className="app-page"><section className="team-auth-required"><h1>Sign in to manage your team</h1><p>{error || "Team invitations, assignments, and results are tied to the subscription holder’s account."}</p><Link className="button button-dark" href="/signin?return_to=%2Fteam">Sign in →</Link></section></main>;
+
+  const invitedMembers = data.members.filter(member => member.role === "MEMBER");
+  const activeMembers = invitedMembers.filter(member => member.status === "ACTIVE");
+  return <main className="app-page team-dashboard">
+    <header className="team-dashboard-header"><div><h1>{data.team.name}</h1><p>Invite up to five people, give them repository work, and review their submitted results.</p></div><div className="team-seat-count"><b>{data.team.seatsUsed} / {data.team.seatLimit}</b><span>member seats used</span></div></header>
+    {error && <div className="team-error" role="alert">{error}</div>}
+    <nav className="team-section-nav" aria-label="Team dashboard sections"><a href="#members">Members</a><a href="#assignments">Assignments</a><a href="#results">Results</a><Link href="/team/studio">Incident studio</Link></nav>
+
+    <section className="team-section" id="members"><div className="team-section-heading"><div><h2>Members</h2><p>{activeMembers.length} active · {invitedMembers.length - activeMembers.length} awaiting account sign-in</p></div><form className="team-invite-form" onSubmit={invite}><label htmlFor="team-email">Invite by email</label><div><input id="team-email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="engineer@company.com" required disabled={data.team.seatsUsed >= data.team.seatLimit} /><button className="button button-dark" disabled={busy === "invite" || data.team.seatsUsed >= data.team.seatLimit}>{busy === "invite" ? "Inviting…" : "Invite"}</button></div></form></div>
+      <div className="team-table-wrap"><table className="team-table"><thead><tr><th>Person</th><th>Role</th><th>Status</th><th>Joined</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{data.members.map(member => <tr key={member.id}><td><b>{member.displayName}</b><span>{member.email}</span></td><td>{member.role === "OWNER" ? "Subscription holder" : "Member"}</td><td><span className={`team-status ${member.status.toLowerCase()}`}>{member.status === "ACTIVE" ? "Active" : "Invited"}</span></td><td>{member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "—"}</td><td>{member.role === "MEMBER" && <button className="text-link" onClick={() => act({ action: "remove-member", memberId: member.id }, member.id)} disabled={busy === member.id}>Remove</button>}</td></tr>)}</tbody></table></div>
+      <p className="team-help">Invitations reserve a seat immediately. When that email signs in to RepoRehearsal, the member becomes active automatically.</p>
+    </section>
+
+    <section className="team-section" id="assignments"><div className="team-section-heading"><div><h2>Assignments</h2><p>Assign one repository—or the entire saved library—to everyone or one member.</p></div></div>
+      <form className="team-assignment-form" onSubmit={assign}><label>Repository<select value={repositoryId} onChange={event => setRepositoryId(event.target.value)}><option value="challenge-of-the-day">Challenge of the Day</option><option value="all">All saved repositories</option>{data.repositories.map(repository => <option value={repository.id} key={repository.id}>{repository.name} · {repository.language}</option>)}</select></label><label>Incident<select value={incidentId} onChange={event => setIncidentId(event.target.value as typeof incidentId)}>{incidents.map(item => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label><label>Assign to<select value={assignee} onChange={event => setAssignee(event.target.value)}><option value="all">Everyone</option>{invitedMembers.map(member => <option value={member.email} key={member.id}>{member.displayName}</option>)}</select></label><button className="button button-dark" disabled={busy === "assignment" || !invitedMembers.length}>{busy === "assignment" ? "Assigning…" : "Create assignment"}</button></form>
+      {data.assignments.length ? <div className="team-table-wrap"><table className="team-table assignment-table"><thead><tr><th>Repository</th><th>Incident</th><th>Assigned to</th><th>Created</th></tr></thead><tbody>{data.assignments.map(item => <tr key={item.id}><td><b>{item.repositoryName}</b></td><td>{item.incidentName}</td><td>{item.assignedToEmail === "all" ? "Everyone" : item.assignedToEmail}</td><td>{new Date(item.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <p className="team-empty">No assignments yet. Invite a member, then create the first assignment.</p>}
+    </section>
+
+    <section className="team-section" id="results"><div className="team-section-heading"><div><h2>Results</h2><p>Verified submissions from the owner and active team members.</p></div></div>
+      {data.results.length ? <div className="team-table-wrap"><table className="team-table results-table"><thead><tr><th>Member</th><th>Repository</th><th>Incident</th><th>Score</th><th>Time</th><th>Submitted</th></tr></thead><tbody>{data.results.map(result => <tr key={result.id}><td><b>{result.displayName}</b><span>{result.memberEmail}</span></td><td>{result.repositoryName}</td><td>{result.incidentName}</td><td><strong className={result.score < 0 ? "negative-score" : ""}>{result.score}</strong></td><td>{result.durationMinutes}m</td><td>{new Date(result.completedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <p className="team-empty">Results appear here after a team member submits a rehearsal.</p>}
+    </section>
   </main>;
 }
