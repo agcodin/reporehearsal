@@ -1,24 +1,16 @@
 import Link from "next/link";
 import GitHubImportCard from "./GitHubImportCard";
 import LocalUploadCard from "./LocalUploadCard";
-import { CURATED_REPOSITORY_COUNT } from "../../src/repositories/curated-catalog";
 import { getAuthenticatedUser, signInPath } from "../auth";
 import { listGitHubRepositoryCatalog } from "../../src/auth/auth-service";
 
-export const dynamic = "force-dynamic";
-
-export default async function Repositories() {
-  const user = await getAuthenticatedUser();
-  const connectedRepositories = user?.provider === "github" ? await listGitHubRepositoryCatalog(user.email, user.displayName) : [];
-  return <main className="app-page repositories-simple-page">
-    <header className="repositories-simple-header"><h1>Add a repository</h1><p>Choose where your code comes from. Your original repository stays untouched.</p></header>
-    <section className="repository-entry-list" aria-label="Choose a repository source">
-      {user ? <GitHubImportCard connectedRepositories={connectedRepositories} /> : <article className="repo-card repository-entry-card repository-account-gate"><div><h2>Import from GitHub</h2><p>Paste a public repository URL after signing in.</p></div><div><p>An account keeps imported code attached to the right workspace.</p><Link className="button button-dark" href={signInPath("/repositories")}>Sign in to import</Link></div></article>}
-      {user ? <LocalUploadCard /> : <article className="repo-card repository-entry-card repository-account-gate"><div><h2>Import from computer</h2><p>Upload a project folder or ZIP after signing in.</p></div><div><p>Your account controls access to the filtered source snapshot.</p><Link className="button button-dark" href={signInPath("/repositories")}>Sign in to upload</Link></div></article>}
-      <article className="repo-card repository-entry-card random-repository-card">
-        <div><h2>Random GitHub repo</h2><p>Practice with one of {CURATED_REPOSITORY_COUNT} public projects.</p></div>
-        <Link className="button button-dark" href="/repositories/curated">Choose a repo</Link>
-      </article>
-    </section>
-  </main>;
-}
+export const dynamic="force-dynamic";
+const samples=[
+  ["TypeScript","billing-api","Database-backed billing service with migrations, provider boundaries, and webhooks.",["DB","API"]],
+  ["Python","inventory-worker","Queue-driven inventory reconciliation with retry and idempotency failures.",["CFG","API"]],
+  ["Go","gateway-service","HTTP gateway with service discovery, timeouts, and health-check incidents.",["CFG","API"]],
+  ["Java","orders-platform","Spring application with transactional and schema migration failure paths.",["DB","API"]],
+  ["C#","identity-service","ASP.NET identity boundary with null contracts and configuration faults.",["CFG","API"]],
+  ["Rust","event-processor","Typed event consumer with option handling and recovery scenarios.",["API"]],
+] as const;
+export default async function Repositories(){const user=await getAuthenticatedUser();const connected=user?.provider==="github"?await listGitHubRepositoryCatalog(user.email,user.displayName):[];return <main className="repositories-spec rr-container"><header><div><h1>Repositories</h1><p>Rehearse against our curated sample repositories, or connect your own. Every exercise runs on a temporary copy.</p></div><a className="button button-blue" href="#connect">Connect a repository</a></header><div className="repo-toolbar"><label>⌕<input placeholder="Search repositories" aria-label="Search repositories"/></label><div><button className="active">All</button><button>TypeScript</button><button>Python</button><button>Go</button><button>Java</button></div></div><p className="section-overline">CURATED SAMPLES</p><section className="sample-grid">{samples.map(([language,name,copy,tags])=><article key={name}><header><i/><b>{name}</b><small>{language}</small></header><p>{copy}</p><footer>{tags.map(tag=><span key={tag}>{tag}</span>)}<Link className="button button-ghost" href="/rehearsals/new">Rehearse →</Link></footer></article>)}</section><section className="connect-panel" id="connect"><header><h3>Bring your own repository</h3><p>Your source is copied to a temporary workspace, secrets are redacted, and the original is never modified.</p><ul><li>Redacted secrets</li><li>Allowlisted commands</li><li>Expiring workspaces</li><li>Read-only source</li></ul></header><div className="connect-options">{user?<><GitHubImportCard connectedRepositories={connected}/><LocalUploadCard/></>:<div className="connect-signin"><p>Sign in to import a public GitHub repository or upload code from your computer.</p><Link className="button button-dark" href={signInPath("/repositories")}>Sign in to connect</Link></div>}<Link className="text-link" href="/repositories/curated">Choose a random public repository →</Link><Link className="text-link" href="/privacy">How isolation works →</Link></div></section></main>}

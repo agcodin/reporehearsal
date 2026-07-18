@@ -5,7 +5,7 @@ import { useState } from "react";
 import { usePlan } from "./PlanProvider";
 
 const links = [
-  ["Challenge of the Day", "/daily"],
+  ["Challenge", "/daily"],
   ["Dashboard", "/dashboard"],
   ["Repositories", "/repositories"],
   ["Pricing", "/pricing"],
