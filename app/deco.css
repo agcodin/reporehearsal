@@ -13,8 +13,8 @@
   --deco-success: #79c58a;
   --deco-line: rgba(212, 175, 55, .42);
   --deco-line-soft: rgba(212, 175, 55, .18);
-  --deco-display: var(--font-display), "Times New Roman", serif;
-  --deco-body: var(--font-body), "Avenir Next", sans-serif;
+  --deco-display: "Marcellus", "Times New Roman", serif;
+  --deco-body: "Josefin Sans", "Avenir Next", sans-serif;
 }
 
 html { background: var(--deco-bg) !important; color-scheme: dark; }
