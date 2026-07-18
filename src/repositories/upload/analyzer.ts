@@ -8,7 +8,7 @@ export const DEFAULT_UPLOAD_LIMITS = planFor("FREE").limits;
 export const MAX_UPLOAD_BYTES = DEFAULT_UPLOAD_LIMITS.repositoryUploadBytes;
 export const MAX_UPLOAD_FILES = DEFAULT_UPLOAD_LIMITS.repositoryFiles;
 const excludedDirectories = new Set([".git", ".next", "node_modules", "dist", "build", "coverage", ".turbo"]);
-const allowedExtensions = new Set([".cjs", ".css", ".env.example", ".graphql", ".html", ".js", ".json", ".jsx", ".md", ".mjs", ".prisma", ".properties", ".py", ".rb", ".rs", ".sh", ".sql", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"]);
+const allowedExtensions = new Set([".c", ".cc", ".cjs", ".cpp", ".cs", ".css", ".cxx", ".env.example", ".go", ".graphql", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".kt", ".kts", ".md", ".mjs", ".php", ".prisma", ".properties", ".py", ".rb", ".rs", ".scala", ".sh", ".sql", ".swift", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"]);
 
 export type UploadedFile = { path: string; bytes: Uint8Array };
 export type UploadAnalysis = {
@@ -54,10 +54,10 @@ function normalizeRoot(files: UploadedFile[]): UploadedFile[] {
   return files.map(file => ({ ...file, path: file.path.slice(root.length + 1) })).filter(file => file.path);
 }
 
-function limitMessage(limits: PlanLimits) { return `${Math.round(limits.repositoryUploadBytes / 1024 / 1024)} MB`; }
+function limitMessage(limits: PlanLimits) { return limits.repositoryUploadBytes === null ? "configured platform capacity" : `${Math.round(limits.repositoryUploadBytes / 1024 / 1024)} MB`; }
 
 export function extractZipUpload(bytes: Uint8Array, limits: PlanLimits = DEFAULT_UPLOAD_LIMITS): { files: UploadedFile[]; fileCount: number } {
-  if (!bytes.length || bytes.length > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `ZIP uploads must be ${limitMessage(limits)} or smaller.`, 413);
+  if (!bytes.length || limits.repositoryUploadBytes !== null && bytes.length > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `ZIP uploads must be ${limitMessage(limits)} or smaller.`, 413);
   let fileCount = 0;
   let totalBytes = 0;
   try {
@@ -67,7 +67,7 @@ export function extractZipUpload(bytes: Uint8Array, limits: PlanLimits = DEFAULT
       fileCount += 1;
       totalBytes += info.originalSize;
       if (fileCount > limits.repositoryFiles) throw new RepositoryUploadError("TOO_MANY_FILES", `The codebase contains more than ${limits.repositoryFiles.toLocaleString()} files.`, 413);
-      if (totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("EXPANDED_UPLOAD_TOO_LARGE", `The expanded codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
+      if (limits.repositoryUploadBytes !== null && totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("EXPANDED_UPLOAD_TOO_LARGE", `The expanded codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
       return info.originalSize <= limits.maxTextFileBytes && !isSensitivePath(path) && isTextCandidate(path);
     } });
     return { files: normalizeRoot(Object.entries(extracted).map(([path, file]) => ({ path: safePath(path), bytes: file }))), fileCount };
@@ -85,7 +85,7 @@ export function validateFolderUpload(files: UploadedFile[], limits: PlanLimits =
   for (const file of files) {
     const path = safePath(file.path);
     totalBytes += file.bytes.byteLength;
-    if (totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
+    if (limits.repositoryUploadBytes !== null && totalBytes > limits.repositoryUploadBytes) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The codebase exceeds the ${limitMessage(limits)} analysis limit.`, 413);
     if (file.bytes.byteLength <= limits.maxTextFileBytes && !isSensitivePath(path) && isTextCandidate(path)) selected.push({ path, bytes: file.bytes });
   }
   return normalizeRoot(selected);
@@ -105,9 +105,9 @@ export function analyzeUploadedFiles(name: string, allFiles: UploadedFile[], sou
   const map = analyzeRepository(id, safeName, analyzable);
   const paths = analyzable.map(file => file.path);
   const packageJson = analyzable.find(file => file.path === "package.json")?.content ?? "";
-  const language = paths.some(path => /\.tsx?$/.test(path)) ? "TypeScript" : paths.some(path => /\.jsx?$/.test(path)) ? "JavaScript" : "unknown";
-  const framework = packageJson.includes('"express"') ? "Express" : packageJson.includes('"next"') ? "Next.js" : "unknown";
-  const testFramework = packageJson.includes('"vitest"') ? "Vitest" : packageJson.includes('"jest"') ? "Jest" : "unknown";
+  const language = map.language;
+  const framework = map.framework;
+  const testFramework = map.testFramework;
   const database = map.database ?? "unknown";
   const orm = map.orm ?? "unknown";
   const packageManager = paths.includes("pnpm-lock.yaml") ? "pnpm" : paths.includes("yarn.lock") ? "Yarn" : paths.includes("package-lock.json") ? "npm" : "unknown";

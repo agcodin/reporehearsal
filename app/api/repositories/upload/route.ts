@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     await consumeRateLimit(request, "repository-upload", 10, 3_600);
     const plan = planFromRequest(request);
     const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > plan.limits.repositoryUploadBytes + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The upload exceeds the ${formatBytes(plan.limits.repositoryUploadBytes)} ${plan.name} limit.`, 413);
+    if (plan.limits.repositoryUploadBytes !== null && contentLength > plan.limits.repositoryUploadBytes + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The upload exceeds the ${formatBytes(plan.limits.repositoryUploadBytes)} ${plan.name} limit.`, 413);
     const form = await request.formData();
     const archive = form.get("archive");
     const rawFiles = form.getAll("files").filter((value): value is File => value instanceof File);

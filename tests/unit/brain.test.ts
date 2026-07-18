@@ -30,6 +30,7 @@ describe("repository incident brain", () => {
     expect(injected.find(file => file.path === blueprint.targetPath)?.content).toContain("@localhost:5432");
     const validation = evaluateGeneratedIncident(blueprint, injected, { timeline: [], hypotheses: [], hintCount: 0 });
     expect(validation.passed).toBe(false);
+    expect(validation.score).toBe(0);
     expect(validation.checks[0].status).toBe("failed");
   });
 
@@ -47,5 +48,18 @@ describe("repository incident brain", () => {
   it("falls back to a real package quality command when no stronger boundary exists", () => {
     const files = [{ path: "package.json", content: JSON.stringify({ scripts: { test: "vitest run" } }, null, 2) }];
     expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "package-script", targetPath: "package.json" });
+  });
+
+  it("assigns a negative score when an edit introduces an unsafe regression", () => {
+    const blueprint = generateIncidentBlueprint(repository, "INTERMEDIATE");
+    const injected = applyGeneratedIncident(repository, blueprint).map(file => file.path === blueprint.targetPath ? { ...file, content: `${file.content}\n// @ts-ignore\nalways return success` } : file);
+    const validation = evaluateGeneratedIncident(blueprint, injected, { timeline: [event("file_edited", { path: blueprint.targetPath })], hypotheses: [], hintCount: 0 });
+    expect(validation.score).toBeLessThan(0);
+  });
+
+  it("discovers a Python-specific fallback regression", () => {
+    const files = [{ path: "app.py", content: "region = customer.region or 'US'\nreturn region.strip()" }];
+    expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "language-fallback", language: "Python", targetPath: "app.py" });
+    expect(analyzeRepository("python-1", "Python app", files).language).toBe("Python");
   });
 });

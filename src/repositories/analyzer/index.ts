@@ -20,14 +20,15 @@ export function analyzeRepository(repositoryId: string, name: string, files: Ana
   const packages = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
   const prismaFiles = ordered.filter(file => file.path.endsWith("schema.prisma"));
   const prisma = prismaFiles.map(file => file.content).join("\n");
-  const sourceFiles = ordered.filter(file => /\.(?:js|jsx|ts|tsx)$/.test(file.path));
-  const language = paths.some(path => /\.tsx?$/.test(path)) ? "TypeScript" : paths.some(path => /\.jsx?$/.test(path)) ? "JavaScript" : paths.some(path => path.endsWith(".py")) ? "Python" : "unknown";
-  const framework = packages.express ? "Express" : packages.next ? "Next.js" : packages.fastify ? "Fastify" : packages.koa ? "Koa" : packages["@nestjs/core"] ? "NestJS" : "unknown";
+  const sourceFiles = ordered.filter(file => /\.(?:c|cc|cpp|cs|cxx|go|h|hpp|java|js|jsx|kt|kts|php|py|rb|rs|scala|swift|ts|tsx)$/.test(file.path));
+  const language = paths.some(path => /\.tsx?$/.test(path)) ? "TypeScript" : paths.some(path => /\.jsx?$/.test(path)) ? "JavaScript" : paths.some(path => path.endsWith(".py")) ? "Python" : paths.some(path => path.endsWith(".java")) ? "Java" : paths.some(path => path.endsWith(".cs")) ? "C#" : paths.some(path => /\.(?:cpp|cc|cxx|hpp)$/.test(path)) ? "C++" : paths.some(path => /\.(?:c|h)$/.test(path)) ? "C" : paths.some(path => path.endsWith(".go")) ? "Go" : paths.some(path => path.endsWith(".rs")) ? "Rust" : paths.some(path => path.endsWith(".rb")) ? "Ruby" : paths.some(path => path.endsWith(".php")) ? "PHP" : paths.some(path => /\.kts?$/.test(path)) ? "Kotlin" : paths.some(path => path.endsWith(".swift")) ? "Swift" : paths.some(path => path.endsWith(".scala")) ? "Scala" : "unknown";
+  const allSource = ordered.map(file => file.content).join("\n");
+  const framework = packages.express ? "Express" : packages.next ? "Next.js" : packages.fastify ? "Fastify" : packages.koa ? "Koa" : packages["@nestjs/core"] ? "NestJS" : /(?:from|import)\s+flask|Flask\(/.test(allSource) ? "Flask" : /(?:from|import)\s+django/.test(allSource) ? "Django" : /springframework|SpringApplication/.test(allSource) ? "Spring" : /Microsoft\.AspNetCore/.test(allSource) ? "ASP.NET" : /gin-gonic|gin\.Default/.test(allSource) ? "Gin" : /rails|Rails\.application/.test(allSource) ? "Rails" : /laravel|Illuminate\\/.test(allSource) ? "Laravel" : "unknown";
   const packageManager = paths.includes("pnpm-lock.yaml") ? "pnpm" : paths.includes("yarn.lock") ? "Yarn" : paths.includes("package-lock.json") ? "npm" : "unknown";
   const database = /provider\s*=\s*["']postgresql["']/.test(prisma) || /postgres(?:ql)?:\/\//i.test(ordered.map(file => file.content).join("\n")) ? "PostgreSQL" : /provider\s*=\s*["']mysql["']/.test(prisma) ? "MySQL" : "unknown";
   const orm = prisma ? "Prisma" : packages.typeorm ? "TypeORM" : packages.sequelize ? "Sequelize" : packages["drizzle-orm"] ? "Drizzle" : "unknown";
-  const testFramework = packages.vitest ? "Vitest" : packages.jest ? "Jest" : packages.mocha ? "Mocha" : "unknown";
-  const entryPoints = paths.filter(path => /(?:^|\/)(?:server|index|main|app)\.(?:js|jsx|ts|tsx)$/.test(path)).slice(0, 20);
+  const testFramework = packages.vitest ? "Vitest" : packages.jest ? "Jest" : packages.mocha ? "Mocha" : paths.some(path => /(?:^|\/)test_.*\.py$|_test\.py$/.test(path)) ? "pytest" : /org\.junit/.test(allSource) ? "JUnit" : /\[Test\]|NUnit/.test(allSource) ? "NUnit" : paths.some(path => path.endsWith("_test.go")) ? "Go test" : /#\[test\]/.test(allSource) ? "Cargo test" : "unknown";
+  const entryPoints = paths.filter(path => /(?:^|\/)(?:server|index|main|app)\.(?:c|cc|cpp|cs|cxx|go|java|js|jsx|kt|kts|php|py|rb|rs|scala|swift|ts|tsx)$/.test(path)).slice(0, 20);
   const routes = sourceFiles.flatMap(file => [...file.content.matchAll(/\.(get|post|put|patch|delete)\s*\(\s*["'`]([^"'`]+)["'`]/gi)].map(match => `${match[1].toUpperCase()} ${match[2]}`)).slice(0, 40);
   const serviceGroups = new Map<string, string[]>();
   for (const file of sourceFiles) {
@@ -48,7 +49,7 @@ export function analyzeRepository(repositoryId: string, name: string, files: Ana
     entryPoints, services, databaseModels,
     migrations: paths.filter(path => /(?:^|\/)(?:prisma\/)?migrations?\//.test(path) || /migration.*\.sql$/i.test(path)).slice(0, 50),
     environmentVariables,
-    testFiles: paths.filter(path => /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:spec|test)\.[jt]sx?$/.test(path)).slice(0, 100),
+    testFiles: paths.filter(path => /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:spec|test)\.[jt]sx?$|(?:^|\/)test_.*\.py$|_test\.go$|Tests?\.cs$|Test\.java$/.test(path)).slice(0, 100),
     healthChecks, riskAreas, incidentCandidates,
   };
 }

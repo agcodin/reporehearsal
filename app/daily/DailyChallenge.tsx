@@ -1,0 +1,11 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Challenge = { dateKey: string; repositoryName: string; difficulty: string; timeLimitMinutes: number; fileCount: number; incident: { name: string; summary: string; category: string } };
+
+export default function DailyChallenge({ challenge }: { challenge: Challenge }) {
+  const router = useRouter(); const [status, setStatus] = useState<"idle" | "loading" | "error">("idle"); const [message, setMessage] = useState("");
+  async function start() { setStatus("loading"); setMessage(""); try { const response = await fetch("/api/rehearsals/daily", { method: "POST" }); const data = await response.json() as { session?: { id: string }; accessToken?: string; error?: { message?: string } }; if (!response.ok || !data.session || !data.accessToken) throw new Error(data.error?.message ?? "The daily challenge could not be created."); sessionStorage.setItem(`rr-session-${data.session.id}`, data.accessToken); router.push(`/rehearsals/${data.session.id}/preparing`); } catch (error) { setMessage(error instanceof Error ? error.message : "The daily challenge could not be created."); setStatus("error"); } }
+  return <main className="app-page daily-page"><section className="daily-brief"><div><span className="daily-date">{challenge.dateKey}</span><h1>Repository of the Day</h1><p>Everyone gets the same five-file repository, incident prompt, evidence, validation contract, and timer today.</p></div><dl><div><dt>Issue</dt><dd>{challenge.incident.name}</dd></div><div><dt>Language</dt><dd>TypeScript</dd></div><div><dt>Files</dt><dd>{challenge.fileCount}</dd></div><div><dt>Limit</dt><dd>{challenge.timeLimitMinutes} min</dd></div></dl></section><section className="panel daily-task"><h2>{challenge.incident.name}</h2><p>{challenge.incident.summary}</p><div><span>{challenge.difficulty.toLowerCase()}</span><span>{challenge.incident.category.replace("_", " ")}</span></div><button className="button button-dark" onClick={start} disabled={status === "loading"}>{status === "loading" ? "Creating today’s workspace…" : "Start today’s challenge"}</button>{message && <p role="alert">{message}</p>}</section><p className="daily-share-note">Finish the challenge to share your score and completion time with friends.</p></main>;
+}

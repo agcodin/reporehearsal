@@ -2,6 +2,7 @@ import { ensureAccount } from "../accounts/account-service";
 import { repositoryMap, injectedBillingSource } from "../data";
 import { accessToken, repositoryBucket, runtimeDatabase, sha256 } from "../storage/runtime";
 import type { StoredRepository, WorkspaceFile, RepositorySource } from "../rehearsals/types";
+import { DAILY_REPOSITORY_ID } from "../rehearsals/daily";
 
 export type RepositoryUser = { email: string; displayName: string } | null;
 type RepositoryRow = { id: string; owner_account_id: string | null; access_token_hash: string; source: RepositorySource; external_ref: string | null; name: string; analysis_json: string; object_key: string; file_count: number; created_at: string; expires_at: string | null };
@@ -15,6 +16,13 @@ const demoFiles: WorkspaceFile[] = [
   { path: "tests/billing.test.ts", content: "describe('billing', () => { it('loads existing accounts', () => {}); });" },
   { path: "docker-compose.yml", content: "services:\n  billing-api:\n    environment:\n      DATABASE_URL: postgresql://rehearsal:rehearsal@postgres:5432/billing\n  postgres:\n    image: postgres:16" },
   { path: ".env.example", content: "DATABASE_URL=postgresql://rehearsal:rehearsal@postgres:5432/billing\nPORT=3001" },
+];
+const dailyFiles: WorkspaceFile[] = [
+  { path: "src/services/billing.ts", content: injectedBillingSource },
+  { path: ".env.rehearsal", content: "DATABASE_URL=postgresql://rehearsal:rehearsal@postgres:5432/billing\nPORT=3001" },
+  { path: "src/services/provider-client.ts", content: "export function normalizeProvider(payload: { status?: string }) { return { status: (payload.status ?? 'unknown').toUpperCase() }; }" },
+  { path: "src/services/webhook-handler.ts", content: "export async function handleWebhook(event: ProviderEvent, signature: string) { verifyWebhook(signature, event); const existing = await prisma.charge.findUnique({ where: { providerEventId: event.id } }); if (existing) return existing; return prisma.charge.create({ data: { providerEventId: event.id, amount: event.amount } }); }" },
+  { path: "tests/incident.test.ts", content: "describe('incident contract', () => { it('preserves the production boundary', () => {}); });" },
 ];
 
 export async function ensureRepositorySchema() {
@@ -48,6 +56,7 @@ export async function saveRepository(user: RepositoryUser, input: { id?: string;
 
 export async function getRepository(id: string, user: RepositoryUser, token?: string | null): Promise<StoredRepository> {
   if (id === repositoryMap.repositoryId) return { id, ownerAccountId: null, source: "DEMO", externalRef: null, name: repositoryMap.name, analysis: repositoryMap as unknown as Record<string, unknown>, objectKey: "builtin://billing-demo", fileCount: demoFiles.length, createdAt: "2026-07-15T00:00:00.000Z", expiresAt: null };
+  if (id === DAILY_REPOSITORY_ID) return { id, ownerAccountId: null, source: "DEMO", externalRef: null, name: "Repository of the Day", analysis: { daily: true, fileCount: 5 }, objectKey: "builtin://repository-of-the-day", fileCount: dailyFiles.length, createdAt: new Date().toISOString(), expiresAt: null };
   await ensureRepositorySchema();
   const row = await runtimeDatabase().prepare("SELECT id, owner_account_id, access_token_hash, source, external_ref, name, analysis_json, object_key, file_count, created_at, expires_at FROM repositories WHERE id = ?").bind(id).first<RepositoryRow>();
   if (!row) throw new RepositoryAccessError("NOT_FOUND", "Repository not found.", 404);
@@ -59,6 +68,7 @@ export async function getRepository(id: string, user: RepositoryUser, token?: st
 }
 
 export async function loadRepositoryFiles(repository: StoredRepository): Promise<WorkspaceFile[]> {
+  if (repository.id === DAILY_REPOSITORY_ID) return dailyFiles.map(file => ({ ...file }));
   if (repository.source === "DEMO") return demoFiles.map(file => ({ ...file }));
   const object = await repositoryBucket().get(repository.objectKey);
   if (!object) throw new RepositoryAccessError("SOURCE_MISSING", "The stored repository source is unavailable.", 410);
