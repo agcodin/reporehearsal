@@ -551,3 +551,114 @@ body>footer,footer:not(.sample-grid footer):not(.wizard-panel footer) {
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }
+
+/* Light edition — preserves the Deco architecture and typography. */
+:root {
+  --deco-bg: #f6f3eb;
+  --deco-surface: #fffdf8;
+  --deco-surface-2: #eee9dc;
+  --deco-gold: #9a7421;
+  --deco-gold-light: #6f5113;
+  --deco-gold-dark: #725315;
+  --deco-cream: #1b1a17;
+  --deco-muted: #625f57;
+  --deco-blue: #32435a;
+  --deco-danger: #a43b2d;
+  --deco-success: #327044;
+  --deco-line: rgba(126, 93, 24, .46);
+  --deco-line-soft: rgba(126, 93, 24, .2);
+}
+
+html { color-scheme: light; }
+body {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(126,93,24,.035) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(-45deg, rgba(126,93,24,.024) 0 1px, transparent 1px 34px) !important;
+}
+::selection { background: rgba(154,116,33,.24); color: #171612; }
+.skip-link { background:#fffdf8; color:#171612; }
+.site-header { background:rgba(255,253,248,.94) !important; }
+.brand-mark { color:var(--deco-gold-dark) !important; }
+.desktop-navigation a:hover,.nav-signin:hover,.signout-link:hover { color:var(--deco-gold-dark) !important; }
+
+.button { color:var(--deco-gold-dark) !important; }
+.button:hover { background:#1b1a17 !important; border-color:#1b1a17 !important; color:#fffdf8 !important; box-shadow:none !important; }
+.button-blue,.button-accent,.button-dark {
+  border-color:#1b1a17 !important;
+  background:#1b1a17 !important;
+  color:#fffdf8 !important;
+}
+.button-blue:hover,.button-accent:hover,.button-dark:hover { background:#3d3a33 !important; border-color:#3d3a33 !important; color:#fffdf8 !important; }
+.button-ghost { color:#282620 !important; }
+.text-link,.text-link:hover { color:var(--deco-gold-dark) !important; }
+input,select,textarea { color:#1b1a17 !important; }
+input::placeholder,textarea::placeholder { color:#77736a !important; }
+input:focus,select:focus,textarea:focus { box-shadow:0 5px 10px rgba(126,93,24,.08) !important; }
+label,.badge,.tag,.popular-chip,.team-status { color:var(--deco-gold-dark) !important; }
+.badge-red { color:#973728 !important; }
+
+.announcement-chip,.live-chip { background:rgba(255,253,248,.88) !important; }
+.home-hero::before { background:repeating-conic-gradient(from 225deg at 50% 100%,rgba(126,93,24,.09) 0 1deg,transparent 1deg 9deg); }
+.home-hero>small { color:#6d6960 !important; }
+.incident-briefing>header,.leaderboard>header,.recent-card>header,
+.status-tile,.repo-toolbar label,.connect-panel,.feature-table,.dashboard-preview,
+.pricing-faq,.steps-band,.scoring-strip,.principles-spec,.billing-toggle,
+.wizard-radio,.wizard-connect,.wizard-incidents>button,.wizard-panel aside,
+.team-table th,.team-assignment-form,.repository-safety-card,.curated-hero,
+.stepper { background:#f0ece2 !important; }
+.briefing-body pre { background:#f7f4ec !important; }
+.connect-signin,.repository-entry-card,.github-import-card,.local-upload-card,
+.mock-dashboard,.mock-dashboard article,.curated-hero>aside,.prepare-note { background:#fffdf8 !important; }
+.feature-table .selected,.recent-row:hover,.provider-button:hover,.wizard-radio.selected,
+.wizard-incidents>button.selected,.workspace-page .hint-box { background:rgba(154,116,33,.08) !important; }
+.feature-dash { color:#666159 !important; }
+.image-slot { background:repeating-linear-gradient(45deg,#f4f0e7,#f4f0e7 4px,#e9e4d8 4px,#e9e4d8 8px) !important; }
+.daily-spec-hero::before { background:repeating-conic-gradient(from 225deg at 50% 100%,rgba(126,93,24,.08) 0 1deg,transparent 1deg 10deg); }
+.leader-row:nth-child(1)>code,.popular-chip,.repo-toolbar button.active,
+.feature-plan-tabs button.active,.billing-toggle button.active,.wizard-panel fieldset button.active,
+.curated-filters button.active { background:#1b1a17 !important; border-color:#1b1a17 !important; color:#fffdf8 !important; }
+.signin-page,.prepare-page,.not-found-page,.report-hero { background:radial-gradient(circle at 50% 38%,rgba(154,116,33,.09),transparent 40%) !important; }
+.provider-button { color:#1b1a17 !important; }
+.signin-logo,.provider-mark,.repo-source-mark { color:var(--deco-gold-dark) !important; }
+.wizard-stepper i { background:#fffdf8 !important; }
+.wizard-stepper .active i,.wizard-stepper .done i { background:#1b1a17 !important; border-color:#1b1a17 !important; color:#fffdf8 !important; }
+.about-mission>p { color:#555149 !important; }
+.about-image { background:radial-gradient(circle,rgba(154,116,33,.08),transparent 60%); }
+.about-image strong,.about-mission blockquote,.privacy-spec>aside,.security-contact a,
+.team-seat-count b,.curated-hero h1 em,.prep-step .check,.big-score strong { color:var(--deco-gold-dark) !important; }
+.account-settings select,.exercise-settings select { background:#fffdf8 !important; color:#1b1a17 !important; }
+.prepare-page,.not-found-page,.report-hero { color:#1b1a17 !important; }
+.big-score { background:#fffdf8; }
+
+/* Light code workspace, with editor geometry deliberately untouched. */
+body:has(.workspace-page) { background:#f6f3eb !important; }
+.workspace-page {
+  --workspace-border:rgba(126,93,24,.22) !important;
+  --workspace-subtle:#f0ece2 !important;
+  background:#f6f3eb !important;
+  color:#1b1a17 !important;
+}
+.workspace-page .workspace-top { background:rgba(255,253,248,.97) !important; }
+.workspace-page .workspace-top::before { color:var(--deco-gold-dark) !important; }
+.workspace-page .workspace-top .button { background:#1b1a17 !important; border-color:#1b1a17 !important; color:#fffdf8 !important; }
+.workspace-page .file-panel,.workspace-page .editor-toolbar,.workspace-page .bottom-console,
+.workspace-page .tabs { background:#f0ece2 !important; }
+.workspace-page .side-panel,.workspace-page .side-section { background:#f8f5ed !important; }
+.workspace-page .timer,.workspace-page .editor-tab,.workspace-page .side-section .button { background:#fffdf8 !important; }
+.workspace-page .file-tree button:hover { background:rgba(154,116,33,.07) !important; color:#1b1a17 !important; }
+.workspace-page .file-tree .active-file { background:rgba(154,116,33,.11) !important; color:#1b1a17 !important; }
+.workspace-page .source-editor-shell,.workspace-page .source-editor-main,.workspace-page .source-highlight { background:#fffdf8 !important; }
+.workspace-page .source-statusbar { background:#e9e4d8 !important; }
+.workspace-page .source-input { caret-color:#1b1a17 !important; }
+.workspace-page .source-input::selection { background:rgba(154,116,33,.24) !important; }
+.workspace-page .source-line-number { color:#8a857b !important; }
+.workspace-page .token-keyword,.workspace-page .token-type { color:#7a5711 !important; }
+.workspace-page .token-comment { color:#6e7568 !important; }
+.workspace-page .workspace-top h1,.workspace-page .editor-tab,.workspace-page .editor-toolbar .button,
+.workspace-page .brief h2,.workspace-page .timeline-item b,.workspace-page .side-section .button,
+.workspace-page .side-section textarea,.workspace-page .side-section input { color:#1b1a17 !important; }
+.workspace-page .side-section .button:hover { background:#1b1a17 !important; color:#fffdf8 !important; }
+
+body>footer,footer:not(.sample-grid footer):not(.wizard-panel footer) { background:#ebe6da !important; }
+.mobile-menu,.mobile-menu-button { background:#fffdf8 !important; color:#1b1a17 !important; box-shadow:0 8px 20px rgba(38,34,25,.09) !important; }
+.mobile-menu a { color:#1b1a17 !important; }
