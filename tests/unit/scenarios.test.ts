@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeBillingSource } from "../../src/data";
+import { incidents, safeBillingSource } from "../../src/data";
 import { scenarioFor } from "../../src/rehearsals/scenarios";
 import type { WorkspaceFile } from "../../src/rehearsals/types";
 
@@ -9,6 +9,16 @@ function evaluate(id: string, path: string, content: string) {
 }
 
 describe("production incident scenarios", () => {
+  it("backs every advertised incident with an injectable deterministic scenario", () => {
+    expect(incidents).toHaveLength(10);
+    for (const incident of incidents) {
+      const scenario = scenarioFor(incident.id);
+      const prepared = scenario.prepare([{ path: "README.md", content: "clean baseline" }]);
+      expect(scenario.template.id).toBe(incident.id);
+      expect(prepared.find(file => file.path === scenario.targetPath)?.content).toBe(scenario.injectedSource);
+      expect(scenario.evaluate(prepared, 0).passed).toBe(false);
+    }
+  });
   it("injects a distinct fault into a copied workspace", () => {
     const source = [{ path: "README.md", content: "source snapshot" }];
     const prepared = scenarioFor("container-host-config-v1").prepare(source);

@@ -64,6 +64,42 @@ export const incidents: IncidentTemplate[] = [
     briefing: { title: "Duplicate charges after a webhook retry", severity: "SEV-1", customerReport: "A small group of customers received duplicate charges after the provider retried delayed webhook deliveries.", initialAlert: "charge-created events exceed unique provider event IDs", knownImpact: ["Payment charges", "Customer trust", "Reconciliation queue"], unaffectedSystems: ["Checkout creation", "Account login"] },
     intendedRootCause: "The webhook handler persists every delivery without an idempotency lookup, so a valid retry is treated as a new charge.", hints: ["Compare provider event IDs for duplicate charges.", "Find where a webhook delivery becomes a persisted charge.", "Use the provider event ID as an idempotency boundary.", "Keep signature verification before any database mutation and safely short-circuit duplicates."],
   },
+  {
+    id: "race-condition-counter-v1", version: 1, name: "Concurrent counter write", category: "database", difficulty: "advanced", available: true,
+    summary: "Repair an intermittent lost update caused by two requests writing the same value.",
+    briefing: { title: "Usage totals drift under concurrency", severity: "SEV-2", customerReport: "Usage totals are occasionally one lower than the accepted request count during traffic bursts.", initialAlert: "accepted requests exceed persisted usage increments", knownImpact: ["Usage metering", "Concurrent requests"], unaffectedSystems: ["Single-request traffic", "Read-only endpoints"] },
+    intendedRootCause: "The usage counter uses a read-modify-write sequence without an atomic update or transaction, so concurrent requests overwrite one another.", hints: ["Compare accepted request IDs with stored increments.", "Look for a read followed by a write.", "Consider what two requests read at the same time.", "Replace the sequence with an atomic database increment or locked transaction."],
+  },
+  {
+    id: "n-plus-one-orders-v1", version: 1, name: "N+1 order lookup", category: "database", difficulty: "intermediate", available: true,
+    summary: "Remove a query-per-row performance regression without changing the response contract.",
+    briefing: { title: "Orders endpoint times out under load", severity: "SEV-2", customerReport: "The orders page works for small accounts but times out for large customers.", initialAlert: "orders endpoint p95 latency crossed 8 seconds", knownImpact: ["Large customer order lists", "Database connection pool"], unaffectedSystems: ["Single-order lookup", "Checkout writes"] },
+    intendedRootCause: "The endpoint loads customers inside the orders loop, turning one request into one query per order.", hints: ["Compare latency with the number of returned rows.", "Count database calls in the request trace.", "Inspect relation loading inside loops.", "Fetch the relation in one bounded query while preserving the response shape."],
+  },
+  {
+    id: "retry-storm-v1", version: 1, name: "Cascading retry storm", category: "external_dependency", difficulty: "advanced", available: true,
+    summary: "Bound retries and add backoff so a partial dependency outage does not become a full outage.",
+    briefing: { title: "Catalog retries overwhelm inventory", severity: "SEV-1", customerReport: "A partial inventory slowdown now causes catalog requests to fail across every region.", initialAlert: "inventory request volume is 9x baseline during elevated latency", knownImpact: ["Catalog availability", "Inventory dependency"], unaffectedSystems: ["Cached product pages", "Checkout payments"] },
+    intendedRootCause: "The retry helper immediately recurses without an attempt limit, delay, or circuit boundary.", hints: ["Compare customer traffic with dependency request volume.", "Inspect the retry termination condition.", "Look for delay or jitter between attempts.", "Add a bounded attempt count and exponential backoff; preserve the original error."],
+  },
+  {
+    id: "cache-invalidation-v1", version: 1, name: "Stale cache after write", category: "configuration", difficulty: "intermediate", available: true,
+    summary: "Invalidate the exact cached record after a successful update.",
+    briefing: { title: "Profile changes appear to be lost", severity: "SEV-3", customerReport: "Customers save a new display name but continue seeing the old value for several minutes.", initialAlert: "profile write succeeds while subsequent reads return stale cache entries", knownImpact: ["Profile reads after update"], unaffectedSystems: ["Profile writes", "Uncached accounts"] },
+    intendedRootCause: "The update path writes the database but leaves the profile cache key populated with stale data.", hints: ["Compare the write response with the next read source.", "Inspect the cache key used by profile reads.", "Find the successful database mutation boundary.", "Invalidate the same key only after the write succeeds."],
+  },
+  {
+    id: "auth-role-regression-v1", version: 1, name: "Inverted role authorization", category: "configuration", difficulty: "advanced", available: true,
+    summary: "Restore a role boundary that grants admin access to the wrong users.",
+    briefing: { title: "Non-admin users can open audit exports", severity: "SEV-1", customerReport: "A support account was able to open an admin-only audit export.", initialAlert: "admin route accessed by role=support", knownImpact: ["Audit export confidentiality", "Role-based access"], unaffectedSystems: ["Authentication", "Public reports"] },
+    intendedRootCause: "The authorization predicate is inverted, calling the protected handler when the current role is not admin.", hints: ["Compare the authenticated role with the authorization decision.", "Inspect middleware ordering and predicate direction.", "Check both allowed and denied cases.", "Use an explicit allow condition and fail closed for every other role."],
+  },
+  {
+    id: "swallowed-exception-v1", version: 1, name: "Swallowed job failure", category: "external_dependency", difficulty: "advanced", available: true,
+    summary: "Make a silent background-job failure observable and retryable.",
+    briefing: { title: "Invoices silently stop exporting", severity: "SEV-2", customerReport: "Invoices show as queued but never arrive in the accounting system, and no alert fired.", initialAlert: "export completion rate fell while worker error rate remains zero", knownImpact: ["Invoice exports", "Queue completion accuracy"], unaffectedSystems: ["Invoice creation", "Accounting reads"] },
+    intendedRootCause: "The worker catches exporter failures without logging, rethrowing, or marking the job failed, so the queue acknowledges lost work.", hints: ["Compare queued jobs with downstream deliveries.", "Inspect exception handling around the exporter.", "Check what tells the queue a job failed.", "Record structured context and rethrow or explicitly reject so retry policy can run."],
+  },
 ];
 
 export const injectedBillingSource = `export function serializeBilling(profile: BillingProfile) {

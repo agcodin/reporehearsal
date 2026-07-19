@@ -33,7 +33,7 @@ export const plans: Plan[] = [
     description: "Learn the incident workflow with starter cases and the shared Challenge of the Day.",
     cta: "Use Free",
     href: "/rehearsals/new",
-    features: ["Four production-style incidents", "Challenge of the Day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
+    features: ["Ten production-style incidents", "Challenge of the Day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
     limits: { repositoryUploadBytes: 20 * MB, repositoryFiles: 3_000, maxTextFileBytes: 1 * MB },
   },
   {

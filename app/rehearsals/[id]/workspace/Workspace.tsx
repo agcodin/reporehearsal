@@ -25,6 +25,8 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [edited, setEdited] = useState(false);
+  const [investigated, setInvestigated] = useState(false);
   const token = typeof window === "undefined" ? "" : sessionStorage.getItem(`rr-session-${sessionId}`) ?? "";
 
   const api = useCallback(async (url: string, init: RequestInit = {}) => {
@@ -56,8 +58,11 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
         if (sessionData.session.status === "COMPLETED") { router.replace(`/rehearsals/${sessionId}/report`); return; }
         if (sessionData.session.status !== "ACTIVE") { router.replace(`/rehearsals/${sessionId}/preparing`); return; }
         setSession(sessionData.session); setFiles(fileData.files); setEvidence(evidenceData.evidence);
+        setEdited(sessionData.session.timeline.some((item: Timeline) => item.type === "file_edited"));
+        setInvestigated(sessionData.session.timeline.some((item: Timeline) => ["command_run", "evidence_viewed", "hypothesis_added"].includes(item.type)));
         setConsoleText(`ALERT\n${evidenceData.evidence.briefing.initialAlert}\n\nUse the investigation tools to collect evidence before editing.`);
-        await openFile(evidenceData.evidence.targetPath);
+        const startingPath = fileData.files.includes(evidenceData.evidence.targetPath) ? evidenceData.evidence.targetPath : fileData.files[0];
+        if (startingPath) await openFile(startingPath);
       } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "The rehearsal could not be loaded."); }
     }
     void load();
@@ -75,28 +80,28 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
   async function save() {
     if (!path || source === savedSource) return;
     setBusy("save"); setError("");
-    try { await api(`/api/rehearsals/${sessionId}/files/content`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: source }) }); setSavedSource(source); }
+    try { const data=await api(`/api/rehearsals/${sessionId}/files/content`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: source }) }); setSavedSource(source); if(data.file?.changed)setEdited(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Changes could not be saved."); }
     finally { setBusy(""); }
   }
 
   async function command(commandId: string, nextTab: Tab) {
     setBusy(commandId); setError("");
-    try { if (source !== savedSource) await save(); const data = await api(`/api/rehearsals/${sessionId}/commands`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commandId }) }); setTab(nextTab); setConsoleText(data.result.output); }
+    try { if (source !== savedSource) await save(); const data = await api(`/api/rehearsals/${sessionId}/commands`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commandId }) }); setTab(nextTab); setConsoleText(data.result.output); setInvestigated(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "The command failed."); }
     finally { setBusy(""); }
   }
 
   async function showDatabase() {
     setBusy("database");
-    try { const data = await api(`/api/rehearsals/${sessionId}/database/query`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ queryId: "compare-affected-records" }) }); setTab("database"); setConsoleText(data.rows.join("\n")); }
+    try { const data = await api(`/api/rehearsals/${sessionId}/database/query`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ queryId: "compare-affected-records" }) }); setTab("database"); setConsoleText(data.rows.join("\n")); setInvestigated(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Evidence could not be loaded."); }
     finally { setBusy(""); }
   }
 
   async function showLogs() {
     setBusy("logs"); setError("");
-    try { const data = await api(`/api/rehearsals/${sessionId}/logs`); setTab("logs"); setConsoleText(data.logs.join("\n")); }
+    try { const data = await api(`/api/rehearsals/${sessionId}/logs`); setTab("logs"); setConsoleText(data.logs.join("\n")); setInvestigated(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Logs could not be loaded."); }
     finally { setBusy(""); }
   }
@@ -104,7 +109,7 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
   async function addHypothesis() {
     if (!hypothesis.trim()) return;
     setBusy("hypothesis");
-    try { const data = await api(`/api/rehearsals/${sessionId}/hypotheses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hypothesis }) }); setSession(current => current ? { ...current, hypotheses: data.hypotheses } : current); setHypothesis(""); }
+    try { const data = await api(`/api/rehearsals/${sessionId}/hypotheses`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hypothesis }) }); setSession(current => current ? { ...current, hypotheses: data.hypotheses } : current); setHypothesis(""); setInvestigated(true); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Hypothesis could not be recorded."); }
     finally { setBusy(""); }
   }
@@ -128,6 +133,7 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
   return <main className="workspace-page">
     <div className="workspace-top"><span className="badge badge-red">{evidence.briefing.severity}</span><h1>{evidence.briefing.title}</h1><span className={`mode-pill ${session.mode === "INTERVIEW" ? "interview" : ""}`}>{session.mode}</span><span className={`timer ${remaining < 300 ? "timer-warning" : ""}`}>{timerText}</span><button className="button button-danger button-small" onClick={submit} disabled={Boolean(busy)}>{busy === "submit" ? "Validating…" : "Submit repair →"}</button></div>
     {error && <div className="error-banner" role="alert">{error}</div>}
+    {investigated && !edited && source === savedSource && <div className="untouched-warning" role="status">You have not edited a file. Submitting now will score 0/100 even though your investigation evidence is recorded.</div>}
     <p className="workspace-mobile-note">This workspace is easier to use on a larger screen. All tools remain available below.</p>
     <div className="workspace-grid">
       <aside className="file-panel"><div className="panel-head">EXPLORER · {session.repositoryName.toUpperCase()}</div><div className="file-tree">{files.map(file => <button className={path === file ? "active-file" : ""} onClick={() => void openFile(file)} key={file}>{file}</button>)}</div></aside>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { usePlan } from "../components/PlanProvider";
 import { assignmentStartPath } from "../../src/team/assignment-link";
+import { incidents as incidentTemplates } from "../../src/data";
 
 type Member = { id: string; email: string; displayName: string; role: "OWNER" | "MEMBER"; status: "ACTIVE" | "INVITED"; invitedAt: string; joinedAt: string | null };
 type Assignment = { id: string; repositoryId: string; repositoryName: string; incidentTemplateId: string; incidentName: string; assignedToEmail: string; createdAt: string };
@@ -11,12 +12,7 @@ type Repository = { id: string; name: string; displayRef: string; language: stri
 type Result = { id: string; memberEmail: string; displayName: string; incidentName: string; repositoryName: string; score: number; durationMinutes: number; status: "COMPLETED" | "UNRESOLVED"; completedAt: string };
 type TeamData = { viewer: { role: "OWNER" | "MEMBER"; email: string; canManage: boolean }; team: { id: string; name: string; seatLimit: number; seatsUsed: number }; members: Member[]; assignments: Assignment[]; repositories: Repository[]; results: Result[] };
 
-const incidents = [
-  ["db-required-field-migration-v1", "Required field migration"],
-  ["container-host-config-v1", "Container host mismatch"],
-  ["provider-schema-drift-v1", "Provider schema drift"],
-  ["webhook-replay-idempotency-v1", "Webhook replay duplicates charges"],
-] as const;
+const incidents = incidentTemplates.map(item => [item.id, item.name] as const);
 
 export default function TeamWorkspace() {
   const { activePlan, ready, includes, activate } = usePlan();
@@ -33,7 +29,6 @@ export default function TeamWorkspace() {
   useEffect(() => {
     if (!ready) return;
     let active = true;
-    setLoading(true);
     fetch("/api/team", { headers: { "x-reporehearsal-plan": activePlan } }).then(async response => {
       const body = await response.json();
       if (response.status === 404) { if (active) setData(null); return; }
