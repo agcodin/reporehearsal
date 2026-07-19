@@ -1,4 +1,4 @@
-CREATE TABLE `daily_leaderboard_entries` (
+CREATE TABLE IF NOT EXISTS `daily_leaderboard_entries` (
 	`id` text PRIMARY KEY NOT NULL,
 	`date_key` text NOT NULL,
 	`account_id` text NOT NULL,
@@ -11,6 +11,6 @@ CREATE TABLE `daily_leaderboard_entries` (
 	FOREIGN KEY (`session_id`) REFERENCES `rehearsal_sessions`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `daily_leaderboard_entries_session_id_unique` ON `daily_leaderboard_entries` (`session_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `daily_leaderboard_account_date_unique` ON `daily_leaderboard_entries` (`date_key`,`account_id`);--> statement-breakpoint
-CREATE INDEX `daily_leaderboard_rank_idx` ON `daily_leaderboard_entries` (`date_key`,`score`,`duration_seconds`);
+CREATE UNIQUE INDEX IF NOT EXISTS `daily_leaderboard_entries_session_id_unique` ON `daily_leaderboard_entries` (`session_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `daily_leaderboard_account_date_unique` ON `daily_leaderboard_entries` (`date_key`,`account_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `daily_leaderboard_rank_idx` ON `daily_leaderboard_entries` (`date_key`,`score`,`duration_seconds`);
