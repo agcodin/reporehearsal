@@ -652,9 +652,14 @@ body:has(.workspace-page) { background:#f6f3eb !important; }
 .workspace-page .source-statusbar { background:#e9e4d8 !important; }
 .workspace-page .source-input { caret-color:#1b1a17 !important; }
 .workspace-page .source-input::selection { background:rgba(154,116,33,.24) !important; }
-.workspace-page .source-line-number { color:#8a857b !important; }
-.workspace-page .token-keyword,.workspace-page .token-type { color:#7a5711 !important; }
-.workspace-page .token-comment { color:#6e7568 !important; }
+.workspace-page .source-highlight,.workspace-page .source-line code { color:#24211d !important; }
+.workspace-page .source-line-number { color:#625d53 !important; }
+.workspace-page .token-plain,.workspace-page .token-punctuation,.workspace-page .token-operator { color:#24211d !important; }
+.workspace-page .token-keyword,.workspace-page .token-type { color:#62440b !important; }
+.workspace-page .token-string,.workspace-page .token-number { color:#7a3e18 !important; }
+.workspace-page .token-comment { color:#485448 !important; }
+.workspace-page .source-statusbar { color:#504b43 !important; }
+.workspace-page .source-statusbar b { color:#3e3420 !important; }
 .workspace-page .workspace-top h1,.workspace-page .editor-tab,.workspace-page .editor-toolbar .button,
 .workspace-page .brief h2,.workspace-page .timeline-item b,.workspace-page .side-section .button,
 .workspace-page .side-section textarea,.workspace-page .side-section input { color:#1b1a17 !important; }
