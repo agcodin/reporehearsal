@@ -3,6 +3,7 @@ import { repositoryMap, injectedBillingSource } from "../data";
 import { accessToken, repositoryBucket, runtimeDatabase, sha256 } from "../storage/runtime";
 import type { StoredRepository, WorkspaceFile, RepositorySource } from "../rehearsals/types";
 import { DAILY_REPOSITORY_ID } from "../rehearsals/daily";
+import { canAccessAssignedRepository } from "../team/team-service";
 
 export type RepositoryUser = { email: string; displayName: string } | null;
 type RepositoryRow = { id: string; owner_account_id: string | null; access_token_hash: string; source: RepositorySource; external_ref: string | null; name: string; analysis_json: string; object_key: string; file_count: number; created_at: string; expires_at: string | null };
@@ -62,8 +63,9 @@ export async function getRepository(id: string, user: RepositoryUser, token?: st
   if (!row) throw new RepositoryAccessError("NOT_FOUND", "Repository not found.", 404);
   if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) { await repositoryBucket().delete(row.object_key); await runtimeDatabase().prepare("DELETE FROM repositories WHERE id = ?").bind(id).run(); throw new RepositoryAccessError("EXPIRED", "This anonymous repository upload has expired.", 410); }
   const owned = user ? row.owner_account_id === await accountId(user) : false;
+  const assigned = user ? await canAccessAssignedRepository(user, id) : false;
   const tokenMatches = token ? await sha256(token) === row.access_token_hash : false;
-  if (!owned && !tokenMatches) throw new RepositoryAccessError("FORBIDDEN", "Repository access is not authorized.", 403);
+  if (!owned && !assigned && !tokenMatches) throw new RepositoryAccessError("FORBIDDEN", "Repository access is not authorized.", 403);
   return fromRow(row);
 }
 

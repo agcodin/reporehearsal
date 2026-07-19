@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { usePlan } from "../components/PlanProvider";
+import { assignmentStartPath } from "../../src/team/assignment-link";
 
 type Member = { id: string; email: string; displayName: string; role: "OWNER" | "MEMBER"; status: "ACTIVE" | "INVITED"; invitedAt: string; joinedAt: string | null };
 type Assignment = { id: string; repositoryId: string; repositoryName: string; incidentTemplateId: string; incidentName: string; assignedToEmail: string; createdAt: string };
 type Repository = { id: string; name: string; displayRef: string; language: string; fileCount: number };
 type Result = { id: string; memberEmail: string; displayName: string; incidentName: string; repositoryName: string; score: number; durationMinutes: number; status: "COMPLETED" | "UNRESOLVED"; completedAt: string };
-type TeamData = { team: { id: string; name: string; seatLimit: number; seatsUsed: number }; members: Member[]; assignments: Assignment[]; repositories: Repository[]; results: Result[] };
+type TeamData = { viewer: { role: "OWNER" | "MEMBER"; email: string; canManage: boolean }; team: { id: string; name: string; seatLimit: number; seatsUsed: number }; members: Member[]; assignments: Assignment[]; repositories: Repository[]; results: Result[] };
 
 const incidents = [
   ["db-required-field-migration-v1", "Required field migration"],
@@ -18,7 +19,7 @@ const incidents = [
 ] as const;
 
 export default function TeamWorkspace() {
-  const { includes, activate } = usePlan();
+  const { activePlan, ready, includes, activate } = usePlan();
   const [data, setData] = useState<TeamData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,33 +28,37 @@ export default function TeamWorkspace() {
   const [repositoryId, setRepositoryId] = useState("challenge-of-the-day");
   const [incidentId, setIncidentId] = useState(incidents[0][0]);
   const [assignee, setAssignee] = useState("all");
+  const [leftTeam, setLeftTeam] = useState(false);
 
   useEffect(() => {
-    if (!includes("TEAM")) { setLoading(false); return; }
+    if (!ready) return;
     let active = true;
-    fetch("/api/team").then(async response => {
+    setLoading(true);
+    fetch("/api/team", { headers: { "x-reporehearsal-plan": activePlan } }).then(async response => {
       const body = await response.json();
+      if (response.status === 404) { if (active) setData(null); return; }
       if (!response.ok) throw Object.assign(new Error(body.error?.message ?? "The team workspace could not be loaded."), { status: response.status });
       if (active) setData(body);
     }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "The team workspace could not be loaded."); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [includes]);
+  }, [activePlan, ready]);
 
   async function act(payload: Record<string, string>, key: string) {
     setBusy(key); setError("");
     try {
-      const response = await fetch("/api/team", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const response = await fetch("/api/team", { method: "POST", headers: { "content-type": "application/json", "x-reporehearsal-plan": activePlan }, body: JSON.stringify(payload) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error?.message ?? "The team could not be updated.");
-      setData(body);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "The team could not be updated."); }
+      if (payload.action === "leave-team") { setData(null); setLeftTeam(true); }
+      else setData(body);
+      return true;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The team could not be updated."); return false; }
     finally { setBusy(""); }
   }
 
   async function invite(event: FormEvent) {
     event.preventDefault();
-    await act({ action: "invite", email }, "invite");
-    setEmail("");
+    if (await act({ action: "invite", email }, "invite")) setEmail("");
   }
 
   async function assign(event: FormEvent) {
@@ -62,13 +67,18 @@ export default function TeamWorkspace() {
     await act({ action: "create-assignment", repositoryId, incidentTemplateId: incident[0], incidentName: incident[1], assignedToEmail: assignee }, "assignment");
   }
 
-  if (!includes("TEAM")) return <main className="app-page"><section className="feature-gate"><span className="badge badge-blue">TEAM FEATURE</span><h1>Manage practice across a five-person team.</h1><p>Activate the Team preview to invite members, assign repositories, and review verified results. Billing is not connected.</p><div className="actions"><button className="button button-blue" onClick={() => activate("TEAM")}>Activate Team preview →</button><Link className="button button-ghost" href="/pricing">Compare plans</Link></div></section></main>;
-
-  if (loading) return <main className="app-page"><div className="account-loading"><span className="pulse" /> Loading team workspace…</div></main>;
-  if (!data) return <main className="app-page"><section className="team-auth-required"><h1>Sign in to manage your team</h1><p>{error || "Team invitations, assignments, and results are tied to the subscription holder’s account."}</p><Link className="button button-dark" href="/signin?return_to=%2Fteam">Sign in →</Link></section></main>;
+  if (!ready || loading) return <main className="app-page"><div className="account-loading"><span className="pulse" /> Loading team workspace…</div></main>;
+  if (!data && !includes("TEAM") && !error) return <main className="app-page"><section className="feature-gate"><span className="badge badge-blue">TEAM FEATURE</span><h1>Manage practice across a five-person team.</h1><p>Activate the Team preview to invite members, assign repositories, and review verified results. People invited by a manager can open this page without upgrading.</p><div className="actions"><button className="button button-blue" onClick={() => activate("TEAM")}>Activate Team preview →</button><Link className="button button-ghost" href="/pricing">Compare plans</Link></div></section></main>;
+  if (!data) return <main className="app-page"><section className="team-auth-required"><h1>{leftTeam ? "You left the team" : "Sign in to open your team"}</h1><p>{leftTeam ? "Your membership and access to its assigned repositories have been removed." : error || "Team invitations, assignments, and results are tied to your account."}</p>{leftTeam ? <Link className="button button-dark" href="/dashboard">Return to dashboard →</Link> : <Link className="button button-dark" href="/signin?return_to=%2Fteam">Sign in →</Link>}</section></main>;
 
   const invitedMembers = data.members.filter(member => member.role === "MEMBER");
   const activeMembers = invitedMembers.filter(member => member.status === "ACTIVE");
+  if (!data.viewer.canManage) return <main className="app-page team-dashboard team-member-dashboard">
+    <header className="team-dashboard-header"><div><h1>{data.team.name}</h1><p>Your assigned repository challenges and submitted scores.</p></div><button className="button button-ghost" onClick={() => { if (window.confirm(`Leave ${data.team.name}? You will lose access to its assigned repositories.`)) void act({ action: "leave-team", teamId: data.team.id }, "leave"); }} disabled={busy === "leave"}>{busy === "leave" ? "Leaving…" : "Leave team"}</button></header>
+    {error && <div className="team-error" role="alert">{error}</div>}
+    <section className="team-section"><div className="team-section-heading"><div><h2>Assigned challenges</h2><p>These challenges were assigned to you by the team manager.</p></div></div>{data.assignments.length ? <div className="member-assignment-list">{data.assignments.map(item => <article key={item.id}><div><b>{item.repositoryName}</b><span>{item.incidentName} · assigned {new Date(item.createdAt).toLocaleDateString()}</span></div><Link className="button button-dark" href={assignmentStartPath(item.repositoryId,item.incidentTemplateId)}>Start challenge</Link></article>)}</div> : <p className="team-empty">Your manager has not assigned a challenge yet.</p>}</section>
+    <section className="team-section"><div className="team-section-heading"><div><h2>Your results</h2><p>Only you and the team manager can see this score history.</p></div></div>{data.results.length ? <div className="team-table-wrap"><table className="team-table results-table"><thead><tr><th>Repository</th><th>Incident</th><th>Score</th><th>Time</th><th>Submitted</th></tr></thead><tbody>{data.results.map(result => <tr key={result.id}><td><b>{result.repositoryName}</b></td><td>{result.incidentName}</td><td><strong className={result.score < 0 ? "negative-score" : ""}>{result.score}</strong></td><td>{result.durationMinutes}m</td><td>{new Date(result.completedAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <p className="team-empty">Your submitted challenge scores will appear here.</p>}</section>
+  </main>;
   return <main className="app-page team-dashboard">
     <header className="team-dashboard-header"><div><h1>{data.team.name}</h1><p>Invite up to five people, give them repository work, and review their submitted results.</p></div><div className="team-seat-count"><b>{data.team.seatsUsed} / {data.team.seatLimit}</b><span>member seats used</span></div></header>
     {error && <div className="team-error" role="alert">{error}</div>}
@@ -80,7 +90,7 @@ export default function TeamWorkspace() {
     </section>
 
     <section className="team-section" id="assignments"><div className="team-section-heading"><div><h2>Assignments</h2><p>Assign one repository—or the entire saved library—to everyone or one member.</p></div></div>
-      <form className="team-assignment-form" onSubmit={assign}><label>Repository<select value={repositoryId} onChange={event => setRepositoryId(event.target.value)}><option value="challenge-of-the-day">Challenge of the Day</option><option value="all">All saved repositories</option>{data.repositories.map(repository => <option value={repository.id} key={repository.id}>{repository.name} · {repository.language}</option>)}</select></label><label>Incident<select value={incidentId} onChange={event => setIncidentId(event.target.value as typeof incidentId)}>{incidents.map(item => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label><label>Assign to<select value={assignee} onChange={event => setAssignee(event.target.value)}><option value="all">Everyone</option>{invitedMembers.map(member => <option value={member.email} key={member.id}>{member.displayName}</option>)}</select></label><button className="button button-dark" disabled={busy === "assignment" || !invitedMembers.length}>{busy === "assignment" ? "Assigning…" : "Create assignment"}</button></form>
+      <form className="team-assignment-form" onSubmit={assign}><label>Repository<select value={repositoryId} onChange={event => setRepositoryId(event.target.value)}><option value="challenge-of-the-day">Challenge of the Day</option>{data.repositories.map(repository => <option value={repository.id} key={repository.id}>{repository.name} · {repository.language}</option>)}</select></label><label>Incident<select value={incidentId} onChange={event => setIncidentId(event.target.value as typeof incidentId)} disabled={repositoryId === "challenge-of-the-day"}>{repositoryId === "challenge-of-the-day" && <option value={incidentId}>Set by today’s challenge</option>}{repositoryId !== "challenge-of-the-day" && incidents.map(item => <option value={item[0]} key={item[0]}>{item[1]}</option>)}</select></label><label>Assign to<select value={assignee} onChange={event => setAssignee(event.target.value)}><option value="all">Everyone</option>{invitedMembers.map(member => <option value={member.email} key={member.id}>{member.displayName}</option>)}</select></label><button className="button button-dark" disabled={busy === "assignment" || !invitedMembers.length}>{busy === "assignment" ? "Assigning…" : "Create assignment"}</button></form>
       {data.assignments.length ? <div className="team-table-wrap"><table className="team-table assignment-table"><thead><tr><th>Repository</th><th>Incident</th><th>Assigned to</th><th>Created</th></tr></thead><tbody>{data.assignments.map(item => <tr key={item.id}><td><b>{item.repositoryName}</b></td><td>{item.incidentName}</td><td>{item.assignedToEmail === "all" ? "Everyone" : item.assignedToEmail}</td><td>{new Date(item.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <p className="team-empty">No assignments yet. Invite a member, then create the first assignment.</p>}
     </section>
 

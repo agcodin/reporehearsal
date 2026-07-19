@@ -662,3 +662,33 @@ body:has(.workspace-page) { background:#f6f3eb !important; }
 body>footer,footer:not(.sample-grid footer):not(.wizard-panel footer) { background:#ebe6da !important; }
 .mobile-menu,.mobile-menu-button { background:#fffdf8 !important; color:#1b1a17 !important; box-shadow:0 8px 20px rgba(38,34,25,.09) !important; }
 .mobile-menu a { color:#1b1a17 !important; }
+
+/* Team member workspace and collision-free submitted score. */
+.member-assignment-list { border-top:1px solid var(--deco-line-soft); }
+.member-assignment-list article { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:20px 0; border-bottom:1px solid var(--deco-line-soft); }
+.member-assignment-list article div { display:grid; gap:4px; }
+.member-assignment-list article b { color:var(--deco-cream); }
+.member-assignment-list article span { color:var(--deco-muted); font-size:13px; }
+.report-score-block { display:flex; flex-direction:column; align-items:center; gap:18px; min-width:210px; }
+.big-score {
+  width:210px !important;
+  height:132px !important;
+  margin:20px auto 0 !important;
+  padding:22px 24px !important;
+  display:flex !important;
+  align-items:baseline !important;
+  justify-content:center !important;
+  gap:10px !important;
+  border:3px double var(--deco-gold) !important;
+  transform:none !important;
+  background:#fffdf8 !important;
+}
+.big-score>* { transform:none !important; }
+.big-score strong { font-size:60px !important; line-height:1 !important; letter-spacing:-.05em !important; }
+.big-score span { position:static !important; flex:0 0 auto; font-size:17px !important; line-height:1 !important; }
+
+@media (max-width:700px) {
+  .member-assignment-list article { align-items:flex-start; flex-direction:column; }
+  .member-assignment-list article .button { width:100%; }
+  .report-score-block { width:100%; }
+}
