@@ -156,6 +156,20 @@ export const rehearsalSessions = sqliteTable("rehearsal_sessions", {
   expiresAt: text("expires_at").notNull(),
 }, table => [index("rehearsal_sessions_owner_date_idx").on(table.ownerAccountId, table.createdAt), index("rehearsal_sessions_expiry_idx").on(table.expiresAt, table.status)]);
 
+export const dailyLeaderboardEntries = sqliteTable("daily_leaderboard_entries", {
+  id: text("id").primaryKey(),
+  dateKey: text("date_key").notNull(),
+  accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull().unique().references(() => rehearsalSessions.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  score: integer("score").notNull(),
+  durationSeconds: integer("duration_seconds").notNull(),
+  completedAt: text("completed_at").notNull(),
+}, table => [
+  uniqueIndex("daily_leaderboard_account_date_unique").on(table.dateKey, table.accountId),
+  index("daily_leaderboard_rank_idx").on(table.dateKey, table.score, table.durationSeconds),
+]);
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   windowStart: integer("window_start").notNull(),

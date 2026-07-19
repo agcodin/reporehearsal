@@ -1,4 +1,5 @@
 export type PlanId = "FREE" | "PRO" | "TEAM";
+export type BillingCadence = "weekly" | "monthly" | "annual";
 
 export type Plan = {
   id: PlanId;
@@ -75,6 +76,13 @@ export function planFor(id: PlanId) {
 export function planFromRequest(request: Request) {
   const value = request.headers.get("x-reporehearsal-plan");
   return planFor(isPlanId(value) ? value : "FREE");
+}
+
+export function priceForCadence(plan: Plan, billing: BillingCadence) {
+  if (plan.id === "FREE") return { price: "$0", cadence: "forever" };
+  if (billing === "weekly") return { price: plan.id === "PRO" ? "$3" : "$6", cadence: "per week" };
+  if (billing === "annual") return { price: `$${(Number(plan.price.slice(1)) * .8).toFixed(2)}`, cadence: "per month, billed annually" };
+  return { price: plan.price, cadence: plan.cadence };
 }
 
 export function formatBytes(bytes: number | null) { return bytes === null ? "Unlimited" : `${Math.round(bytes / MB)} MB`; }

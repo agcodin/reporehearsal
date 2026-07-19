@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { calculateAccountMetrics } from "./metrics";
 import type { AccountDashboard, AccountMode, AccountProfile, AccountRehearsal, AccountRepository } from "./types";
+import { repositoryBucket } from "../storage/runtime";
 
 function database(): D1Database {
   if (!env.DB) throw new Error("Account database binding is unavailable");
@@ -101,4 +102,19 @@ export async function saveAccountRepository(email: string, displayName: string, 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(account_id, source, external_id) DO UPDATE SET name = excluded.name, display_ref = excluded.display_ref, language = excluded.language, framework = excluded.framework, database = excluded.database, orm = excluded.orm, test_framework = excluded.test_framework, package_manager = excluded.package_manager, file_count = excluded.file_count, updated_at = excluded.updated_at`).bind(input.id, profile.id, input.source, input.externalId, input.name, input.displayRef, input.language, input.framework, input.database, input.orm, input.testFramework, input.packageManager, input.fileCount, now, now).run();
   return { ...input, createdAt: now, updatedAt: now };
+}
+
+export async function deleteAccount(email: string) {
+  await ensureAccountSchema(); const db=database();
+  const account=await db.prepare("SELECT id FROM accounts WHERE email = ?").bind(email.toLowerCase()).first<{id:string}>();
+  if(!account)return false;
+  const repositories=await db.prepare("SELECT object_key FROM repositories WHERE owner_account_id = ?").bind(account.id).all<{object_key:string}>();
+  const sessions=await db.prepare("SELECT workspace_key FROM rehearsal_sessions WHERE owner_account_id = ? AND workspace_key IS NOT NULL").bind(account.id).all<{workspace_key:string}>();
+  const objectKeys=[...(repositories.results??[]).map(item=>item.object_key),...(sessions.results??[]).map(item=>item.workspace_key)].filter((value):value is string=>Boolean(value));
+  await Promise.all(objectKeys.map(key=>repositoryBucket().delete(key)));
+  await db.batch([
+    db.prepare("DELETE FROM team_members WHERE account_id = ? OR (email = ? AND role = 'MEMBER')").bind(account.id,email.toLowerCase()),
+    db.prepare("DELETE FROM accounts WHERE id = ?").bind(account.id),
+  ]);
+  return true;
 }
