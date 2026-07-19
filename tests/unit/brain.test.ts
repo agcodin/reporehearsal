@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { applyGeneratedIncident, discoverIncidentCandidates, evaluateGeneratedIncident, generateIncidentBlueprint } from "../../src/incidents/brain";
+import { applyGeneratedIncident, discoverIncidentCandidates, evaluateGeneratedIncident, generateIncidentBlueprint, hasGeneratedWorkspaceEdits } from "../../src/incidents/brain";
 import { analyzeRepository } from "../../src/repositories/analyzer";
 import type { TimelineEvent, WorkspaceFile } from "../../src/rehearsals/types";
+import { normalizeSubmissionScore } from "../../src/rehearsals/submission-score";
 
 const repository: WorkspaceFile[] = [
   { path: "package.json", content: JSON.stringify({ scripts: { test: "vitest run", build: "tsc" }, dependencies: { express: "5" }, devDependencies: { vitest: "3" } }, null, 2) },
@@ -30,7 +31,9 @@ describe("repository incident brain", () => {
     expect(injected.find(file => file.path === blueprint.targetPath)?.content).toContain("@localhost:5432");
     const validation = evaluateGeneratedIncident(blueprint, injected, { timeline: [], hypotheses: [], hintCount: 0 });
     expect(validation.passed).toBe(false);
-    expect(validation.score).toBe(0);
+    const workspaceEdited = hasGeneratedWorkspaceEdits(blueprint, injected);
+    expect(workspaceEdited).toBe(false);
+    expect(normalizeSubmissionScore(validation, workspaceEdited).score).toBe(0);
     expect(validation.checks[0].status).toBe("failed");
   });
 
@@ -38,6 +41,7 @@ describe("repository incident brain", () => {
     const blueprint = generateIncidentBlueprint(repository, "INTERMEDIATE");
     const injected = applyGeneratedIncident(repository, blueprint);
     const repaired = injected.map(file => file.path === blueprint.targetPath ? { ...file, content: blueprint.baselineTarget } : file);
+    expect(hasGeneratedWorkspaceEdits(blueprint, repaired)).toBe(true);
     const timeline = [event("evidence_viewed", { commandId: "evidence-logs" }), event("evidence_viewed", { commandId: "evidence-database" }), event("file_opened", { path: blueprint.targetPath }), event("file_edited", { path: blueprint.targetPath }), event("command_run", { commandId: "run-tests" }), event("command_run", { commandId: "run-build" }), event("command_run", { commandId: "restart-service" }), event("command_run", { commandId: "check-health" })];
     const validation = evaluateGeneratedIncident(blueprint, repaired, { timeline, hypotheses: ["The evidence shows localhost resolves inside the application container, so the service hostname must be restored."], hintCount: 0 });
     expect(validation.passed).toBe(true);

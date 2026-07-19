@@ -146,6 +146,18 @@ export function applyGeneratedIncident(files: WorkspaceFile[], blueprint: Genera
   return files.map(file => file.path !== blueprint.targetPath ? { ...file } : { ...file, content: file.content.replace(blueprint.candidate.before, blueprint.candidate.after) });
 }
 
+export function hasGeneratedWorkspaceEdits(blueprint: GeneratedIncidentBlueprint, files: WorkspaceFile[]): boolean {
+  const expectedTarget = blueprint.baselineTarget.replace(blueprint.candidate.before, blueprint.candidate.after);
+  const knownPaths = new Set(Object.keys(blueprint.baselineHashes));
+  if (files.some(file => !knownPaths.has(file.path))) return true;
+  return Object.entries(blueprint.baselineHashes).some(([path, baselineHash]) => {
+    const file = files.find(item => item.path === path);
+    if (!file) return true;
+    const expectedHash = path === blueprint.targetPath ? stableHash(expectedTarget) : baselineHash;
+    return stableHash(file.content) !== expectedHash;
+  });
+}
+
 function contractSatisfied(blueprint: GeneratedIncidentBlueprint, content: string): boolean {
   const candidate = blueprint.candidate;
   if (content === blueprint.baselineTarget || content.includes(candidate.before)) return true;
@@ -183,8 +195,6 @@ export function evaluateGeneratedIncident(blueprint: GeneratedIncidentBlueprint,
   ];
   const passed = checks.every(check => check.status === "passed");
   const events = context.timeline;
-  const edited = events.some(item => item.type === "file_edited");
-  if (!edited) return { passed: false, score: 0, checks, breakdown: [{ label: "Diagnosis", earned: 0, possible: 25 }, { label: "Investigation", earned: 0, possible: 20 }, { label: "Fix quality", earned: 0, possible: 25 }, { label: "Verification", earned: 0, possible: 15 }, { label: "Prevention", earned: 0, possible: 10 }, { label: "Communication", earned: 0, possible: 5 }] };
   if (unsafe || !scopeSafe) return { passed: false, score: -25, checks, breakdown: [{ label: "Diagnosis", earned: 0, possible: 25 }, { label: "Investigation", earned: 0, possible: 20 }, { label: "Fix quality", earned: -25, possible: 25 }, { label: "Verification", earned: 0, possible: 15 }, { label: "Prevention", earned: 0, possible: 10 }, { label: "Communication", earned: 0, possible: 5 }] };
   const commands = new Set(events.filter(item => item.type === "command_run" || item.type === "evidence_viewed").map(item => item.commandId).filter(Boolean));
   const openedFiles = new Set(events.filter(item => item.type === "file_opened").map(item => item.path).filter(Boolean));

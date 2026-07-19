@@ -1,9 +1,10 @@
 import { test,expect } from "@playwright/test";
 import { strToU8, zipSync } from "fflate";
+const authenticatedHeaders={"oai-authenticated-user-email":"qa@reporehearsal.dev","oai-authenticated-user-full-name":"Repo%20QA","oai-authenticated-user-full-name-encoding":"percent-encoded-utf-8"};
 test("demo API exposes repository and approved command policy",async({request})=>{const repositories=await request.get("/api/repositories");expect(repositories.ok()).toBeTruthy();expect((await repositories.json()).repositories[0].id).toBe("billing-demo");const blocked=await request.post("/api/rehearsals/demo/commands",{data:{commandId:"curl-external-site"}});expect(blocked.status()).toBe(403);const approved=await request.post("/api/rehearsals/demo/commands",{data:{commandId:"run-tests"}});expect(approved.ok()).toBeTruthy()});
-test("GitHub import rejects non-GitHub hosts before fetching",async({request})=>{const response=await request.post("/api/repositories/github",{data:{url:"https://example.com/acme/repository"}});expect(response.status()).toBe(400);expect((await response.json()).error.code).toBe("UNSUPPORTED_HOST")});
+test("GitHub import rejects non-GitHub hosts before fetching",async({request})=>{const response=await request.post("/api/repositories/github",{headers:authenticatedHeaders,data:{url:"https://example.com/acme/repository"}});expect(response.status()).toBe(400);expect((await response.json()).error.code).toBe("UNSUPPORTED_HOST")});
 test("account APIs require server-verified identity",async({request})=>{const account=await request.get("/api/account");expect(account.status()).toBe(401);expect((await account.json()).error.code).toBe("AUTHENTICATION_REQUIRED");const save=await request.post("/api/account/rehearsals",{data:{id:"16a8991b-1aa7-46c2-9ddb-f11e2550c601",incidentTemplateId:"db-required-field-migration-v1",incidentName:"Required field migration",repositoryName:"Billing Demo",mode:"GUIDED",status:"COMPLETED",score:90,durationMinutes:18,hintsUsed:0}});expect(save.status()).toBe(401)});
-test("local upload rejects unsupported files safely",async({request})=>{const response=await request.post("/api/repositories/upload",{multipart:{archive:{name:"repository.txt",mimeType:"text/plain",buffer:Buffer.from("not a zip")}}});expect(response.status()).toBe(400);expect((await response.json()).error.code).toBe("INVALID_FILE_TYPE")});
+test("local upload rejects unsupported files safely",async({request})=>{const response=await request.post("/api/repositories/upload",{headers:authenticatedHeaders,multipart:{archive:{name:"repository.txt",mimeType:"text/plain",buffer:Buffer.from("not a zip")}}});expect(response.status()).toBe(400);expect((await response.json()).error.code).toBe("INVALID_FILE_TYPE")});
 
 test("anonymous rehearsal completes through the server-owned lifecycle",async({request})=>{
   const created=await request.post("/api/rehearsals",{data:{repositoryId:"billing-demo",incidentTemplateId:"db-required-field-migration-v1",difficulty:"INTERMEDIATE",mode:"GUIDED",timeLimitMinutes:25}});
@@ -29,7 +30,7 @@ export function createPartnerProfile(input: PartnerAccount) { return { billingRe
 test("uploaded source produces and scores a repository-derived incident",async({request})=>{
   const originalPackage=JSON.stringify({scripts:{test:"vitest run",build:"tsc"},devDependencies:{typescript:"5",vitest:"3"}},null,2);
   const archive=Buffer.from(zipSync({"quality-service/package.json":strToU8(originalPackage),"quality-service/src/index.ts":strToU8("export const ready = true;"),"quality-service/tests/index.test.ts":strToU8("test('ready', () => {});")}));
-  const upload=await request.post("/api/repositories/upload",{multipart:{archive:{name:"quality-service.zip",mimeType:"application/zip",buffer:archive}}});
+  const upload=await request.post("/api/repositories/upload",{headers:authenticatedHeaders,multipart:{archive:{name:"quality-service.zip",mimeType:"application/zip",buffer:archive}}});
   expect(upload.status()).toBe(200);
   const imported=await upload.json();const repositoryId=imported.repository.id as string;const repositoryToken=imported.accessToken as string;
   expect(imported.repository.compatibleIncidentIds).toContain("repository-generated-v1");
