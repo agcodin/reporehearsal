@@ -4,6 +4,7 @@ import { accessToken, repositoryBucket, runtimeDatabase, sha256 } from "../stora
 import type { StoredRepository, WorkspaceFile, RepositorySource } from "../rehearsals/types";
 import { DAILY_REPOSITORY_ID } from "../rehearsals/daily";
 import { canAccessAssignedRepository } from "../team/team-service";
+import { builtInSamples } from "./sample-fixtures";
 
 export type RepositoryUser = { email: string; displayName: string } | null;
 type RepositoryRow = { id: string; owner_account_id: string | null; access_token_hash: string; source: RepositorySource; external_ref: string | null; name: string; analysis_json: string; object_key: string; file_count: number; created_at: string; expires_at: string | null };
@@ -26,33 +27,6 @@ const dailyFiles: WorkspaceFile[] = [
   { path: "tests/incident.test.ts", content: "describe('incident contract', () => { it('preserves the production boundary', () => {}); });" },
 ];
 
-type BuiltInSample = { name: string; language: string; files: WorkspaceFile[] };
-const builtInSamples: Record<string, BuiltInSample> = {
-  "sample-billing-api": { name: "billing-api", language: "TypeScript", files: [
-    { path: "src/billing.ts", content: "export function billingRegion(profile: { region?: string }) {\n  return (profile.region ?? 'US').toUpperCase();\n}\n" },
-    { path: "tests/billing.test.ts", content: "describe('billing region', () => { it('defaults missing regions', () => {}); });\n" },
-  ] },
-  "sample-inventory-worker": { name: "inventory-worker", language: "Python", files: [
-    { path: "inventory/worker.py", content: "def normalize_item(payload):\n    warehouse = payload.get('warehouse') or 'primary'\n    return {'sku': payload['sku'], 'warehouse': warehouse}\n" },
-    { path: "tests/test_worker.py", content: "def test_missing_warehouse_uses_primary():\n    pass\n" },
-  ] },
-  "sample-gateway-service": { name: "gateway-service", language: "Go", files: [
-    { path: "internal/gateway/handler.go", content: "package gateway\n\nfunc LoadRoute() (*Route, error) {\n\troute, err := fetchRoute()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn route, nil\n}\n" },
-    { path: "internal/gateway/handler_test.go", content: "package gateway\n\nfunc TestLoadRouteFailure(t *testing.T) {}\n" },
-  ] },
-  "sample-orders-platform": { name: "orders-platform", language: "Java", files: [
-    { path: "src/main/java/app/OrderMapper.java", content: "package app;\nimport java.util.Objects;\nclass OrderMapper {\n  String region(Order order) { return Objects.requireNonNullElse(order.region(), \"US\"); }\n}\n" },
-    { path: "src/test/java/app/OrderMapperTest.java", content: "package app;\nclass OrderMapperTest {}\n" },
-  ] },
-  "sample-identity-service": { name: "identity-service", language: "C#", files: [
-    { path: "Services/ClaimsMapper.cs", content: "namespace Identity.Services;\npublic class ClaimsMapper {\n  public string Tenant(Claims claims) {\n    var tenant = claims.Tenant ?? \"public\";\n    return tenant;\n  }\n}\n" },
-    { path: "Tests/ClaimsMapperTests.cs", content: "namespace Identity.Tests;\npublic class ClaimsMapperTests {}\n" },
-  ] },
-  "sample-event-processor": { name: "event-processor", language: "Rust", files: [
-    { path: "src/processor.rs", content: "pub fn retry_count(value: Option<u32>) -> u32 {\n    value.unwrap_or(0)\n}\n" },
-    { path: "tests/processor.rs", content: "#[test]\nfn missing_retry_count_defaults_to_zero() {}\n" },
-  ] },
-};
 
 export async function ensureRepositorySchema() {
   const db = runtimeDatabase();

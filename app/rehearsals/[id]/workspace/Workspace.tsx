@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CodeEditor from "../../../components/CodeEditor";
 
 type Tab = "terminal" | "logs" | "tests" | "database" | "health";
@@ -128,7 +129,7 @@ export default function Workspace({ sessionId }: { sessionId: string }) {
   }
 
   const timerText = `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
-  if (!session || !evidence) return <main className="app-page"><p className="eyebrow">INCIDENT WORKSPACE</p><h1>{error || "Loading your rehearsal…"}</h1></main>;
+  if (!session || !evidence) return error ? <main className="not-found-page"><div><p className="not-found-code">WORKSPACE</p><h1>Rehearsal unavailable</h1><p>{error === "Rehearsal not found." ? "This rehearsal may have expired, or the URL is incomplete." : error}</p><div className="actions"><Link className="button button-dark" href="/dashboard">Return to dashboard</Link><Link className="button button-ghost" href="/rehearsals/new">Start another rehearsal</Link></div></div></main> : <main className="app-page"><p className="eyebrow">INCIDENT WORKSPACE</p><h1>Loading your rehearsal…</h1></main>;
 
   return <main className="workspace-page">
     <div className="workspace-top"><span className="badge badge-red">{evidence.briefing.severity}</span><h1>{evidence.briefing.title}</h1><span className={`mode-pill ${session.mode === "INTERVIEW" ? "interview" : ""}`}>{session.mode}</span><span className={`timer ${remaining < 300 ? "timer-warning" : ""}`}>{timerText}</span><button className="button button-danger button-small" onClick={submit} disabled={Boolean(busy)}>{busy === "submit" ? "Validating…" : "Submit repair →"}</button></div>

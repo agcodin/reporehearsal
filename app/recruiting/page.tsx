@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import RecruitingWorkspace from"./RecruitingWorkspace";export const metadata:Metadata={title:"Candidate debugging screens",description:"Create consistent repository incident screens and review verified results."};export default function Page(){return <RecruitingWorkspace/>}

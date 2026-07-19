@@ -28,7 +28,7 @@ export type IncidentCandidatePreview = Pick<IncidentCandidate, "id" | "name" | "
 
 export type GeneratedIncidentBlueprint = {
   version: 1;
-  generator: "repository-brain-v1";
+  generator: "repository-brain-v1" | "team-studio-v1";
   candidate: IncidentCandidate;
   template: IncidentTemplate;
   targetPath: string;
@@ -39,6 +39,16 @@ export type GeneratedIncidentBlueprint = {
   databaseEvidence: string[];
   healthEvidence: string[];
 };
+
+export function preventionForGeneratedIncident(blueprint: GeneratedIncidentBlueprint): string[] {
+  const { candidate } = blueprint;
+  if (blueprint.generator === "team-studio-v1") return [`Keep regression coverage for the manager-approved behavior in ${candidate.targetPath}.`, "Review this incident contract after related production changes so the evidence and validation remain current."];
+  if (candidate.kind === "container-host") return ["Validate service hostnames from inside the deployment network, not only from a developer machine.", "Keep an integration check that boots the application beside its declared container dependencies."];
+  if (candidate.kind === "nullable-value" || candidate.kind === "language-fallback") return [`Keep a regression test for the missing-value path handled in ${candidate.targetPath}.`, `Document and enforce the expected default for ${candidate.subject ?? "optional input"} at the normalization boundary.`];
+  if (candidate.kind === "response-guard") return ["Validate upstream status before parsing a success payload.", "Add contract fixtures for error, partial, and renamed provider responses."];
+  if (candidate.kind === "environment-fallback") return [`Validate ${candidate.environmentName ?? "runtime configuration"} during startup and document whether it is required.`, "Exercise both present and absent environment-value paths in deployment tests."];
+  return [`Run the repository-owned ${candidate.scriptName ?? "quality"} command in CI before release.`, "Keep package scripts aligned with installed tooling and verify them after dependency changes."];
+}
 
 type EvaluationContext = { timeline: TimelineEvent[]; hypotheses: string[]; hintCount: number };
 
@@ -76,7 +86,7 @@ export function discoverIncidentCandidates(files: WorkspaceFile[]): IncidentCand
   }
 
   for (const file of ordered.filter(sourceFile)) {
-    if (file.path.endsWith(".py")) { const match=file.content.match(/^\s*([a-zA-Z_]\w*)\s*=\s*([a-zA-Z_][\w.]*)\s+or\s+(["'][^"'\n]{1,60}["'])/m); if(match)candidates.push({id:candidateId("language-fallback",file.path),kind:"language-fallback",name:"Python missing-value fallback regression",category:"configuration",targetPath:file.path,confidence:.91,reason:`A Python fallback protecting ${match[1]} was found in ${file.path}.`,before:match[0],after:`${match[1]} = ${match[2]}`,subject:match[1],baselineValue:match[3],language:"Python"}); }
+    if (file.path.endsWith(".py")) { const match=file.content.match(/^\s*([a-zA-Z_]\w*)\s*=\s*([^\n]+?)\s+or\s+(["'][^"'\n]{1,60}["'])/m); if(match)candidates.push({id:candidateId("language-fallback",file.path),kind:"language-fallback",name:"Python missing-value fallback regression",category:"configuration",targetPath:file.path,confidence:.91,reason:`A Python fallback protecting ${match[1]} was found in ${file.path}.`,before:match[0],after:`${match[1]} = ${match[2]}`,subject:match[1],baselineValue:match[3],language:"Python"}); }
     else if (/\.(?:cs|kt|kts|scala|swift)$/.test(file.path)) { const match=file.content.match(/([A-Za-z_]\w*)\s*=\s*([^;\n]+?)\s*(\?\?|\?:)\s*([^;\n]+)/); if(match){const language=file.path.endsWith(".cs")?"C#":/\.kts?$/.test(file.path)?"Kotlin":file.path.endsWith(".swift")?"Swift":"Scala";candidates.push({id:candidateId("language-fallback",file.path),kind:"language-fallback",name:`${language} null fallback regression`,category:"external_dependency",targetPath:file.path,confidence:.88,reason:`A ${language} null fallback was found in ${file.path}.`,before:match[0],after:`${match[1]} = ${match[2]}`,subject:match[1],baselineValue:match[4],language});} }
     else if (file.path.endsWith(".java")) { const match=file.content.match(/Objects\.requireNonNullElse\(([^,\n]+),\s*([^\n)]+)\)/); if(match)candidates.push({id:candidateId("language-fallback",file.path),kind:"language-fallback",name:"Java null contract regression",category:"external_dependency",targetPath:file.path,confidence:.9,reason:`A Java null-default contract was found in ${file.path}.`,before:match[0],after:match[1].trim(),subject:match[1].trim(),baselineValue:match[2].trim(),language:"Java"}); }
     else if (/\.(?:c|cc|cpp|cxx|h|hpp)$/.test(file.path)) { const match=file.content.match(/if\s*\(\s*!([A-Za-z_]\w*)\s*\)\s*(?:\{\s*)?return\s+[^;]+;\s*\}?/); if(match)candidates.push({id:candidateId("language-fallback",file.path),kind:"language-fallback",name:`${/\.(?:c|h)$/.test(file.path)?"C":"C++"} pointer guard regression`,category:"external_dependency",targetPath:file.path,confidence:.87,reason:`A pointer-safety guard was found in ${file.path}.`,before:match[0],after:"/* pointer guard removed by incident */",subject:match[1],language:/\.(?:c|h)$/.test(file.path)?"C":"C++"}); }
@@ -139,7 +149,7 @@ export function generateIncidentBlueprint(files: WorkspaceFile[], difficulty: "B
     briefing: { title: candidate.name, severity, customerReport: copy.report, initialAlert: copy.alert, knownImpact: copy.impact, unaffectedSystems: copy.unaffected },
     intendedRootCause: copy.rootCause, hints: copy.hints,
   };
-  return { version: 1, generator: "repository-brain-v1", candidate, template, targetPath: candidate.targetPath, baselineTarget: target.content, baselineHashes: Object.fromEntries(files.map(file => [file.path, stableHash(file.content)])), testPaths: files.filter(file => /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|\.(?:spec|test)\.[jt]sx?$/.test(file.path)).map(file => file.path), logs: copy.logs, databaseEvidence: copy.database, healthEvidence: copy.health };
+  return { version: 1, generator: "repository-brain-v1", candidate, template, targetPath: candidate.targetPath, baselineTarget: target.content, baselineHashes: Object.fromEntries(files.map(file => [file.path, stableHash(file.content)])), testPaths: files.filter(file => /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)|_test\.go$|\.(?:spec|test)\.[jt]sx?$/i.test(file.path)).map(file => file.path), logs: copy.logs, databaseEvidence: copy.database, healthEvidence: copy.health };
 }
 
 export function applyGeneratedIncident(files: WorkspaceFile[], blueprint: GeneratedIncidentBlueprint): WorkspaceFile[] {

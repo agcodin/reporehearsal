@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { ensureAccount, ensureAccountSchema } from "../accounts/account-service";
 import type { AuthenticatedUser } from "../auth/auth-service";
 import { dailyChallenge } from "../rehearsals/daily";
+import { getTeamFunnelAnalytics } from "../analytics/rehearsal-analytics";
 
 const TEAM_SEAT_LIMIT = 5;
 
@@ -54,6 +55,7 @@ export async function ensureTeamSchema() {
       created_at TEXT NOT NULL
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS team_assignments_team_date_idx ON team_assignments(team_id, created_at DESC)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS custom_incidents (id TEXT PRIMARY KEY NOT NULL, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, repository_id TEXT NOT NULL, repository_name TEXT NOT NULL, title TEXT NOT NULL, signal TEXT NOT NULL, root_cause TEXT NOT NULL, target_path TEXT NOT NULL, safe_snippet TEXT NOT NULL, faulty_snippet TEXT NOT NULL, evidence_json TEXT NOT NULL, validation_contract TEXT NOT NULL, objective TEXT NOT NULL, status TEXT NOT NULL, source_type TEXT NOT NULL, source_ref TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`),
   ]);
 }
 
@@ -99,6 +101,8 @@ async function teamForViewer(user: AuthenticatedUser, allowOwnerCreation: boolea
   return { team, current, viewerRole };
 }
 
+export async function getTeamViewerContext(user: AuthenticatedUser, allowOwnerCreation = false) { return teamForViewer(user, allowOwnerCreation); }
+
 export async function getTeamDashboard(user: AuthenticatedUser, options: { allowOwnerCreation?: boolean } = {}) {
   const { team, current, viewerRole } = await teamForViewer(user, Boolean(options.allowOwnerCreation)); const db = database();
   const memberResult = await db.prepare("SELECT id, email, display_name, role, status, invited_at, joined_at FROM team_members WHERE team_id = ? ORDER BY role, invited_at").bind(team.id).all<MemberRow>();
@@ -110,6 +114,8 @@ export async function getTeamDashboard(user: AuthenticatedUser, options: { allow
     FROM team_members m JOIN account_rehearsals r ON r.account_id = m.account_id
     WHERE m.team_id = ? AND (? = 'OWNER' OR m.account_id = ?) ORDER BY r.completed_at DESC LIMIT 100`).bind(team.id, viewerRole, current.profileId).all<ResultRow>();
   const members = memberResult.results ?? [];
+  const customRows=await db.prepare("SELECT id,title,repository_id FROM custom_incidents WHERE team_id=? AND status='PUBLISHED' ORDER BY updated_at DESC").bind(team.id).all<{id:string;title:string;repository_id:string}>();
+  const analytics = await getTeamFunnelAnalytics(team.id);
   return {
     viewer: { role: viewerRole, email: current.email, canManage: viewerRole === "OWNER" },
     team: { id: team.id, name: team.name, seatLimit: TEAM_SEAT_LIMIT, seatsUsed: members.filter(member => member.role === "MEMBER").length },
@@ -117,6 +123,8 @@ export async function getTeamDashboard(user: AuthenticatedUser, options: { allow
     assignments: (assignmentResult.results ?? []).map(item => ({ id: item.id, repositoryId: item.repository_id, repositoryName: item.repository_name, incidentTemplateId: item.incident_template_id, incidentName: item.incident_name, assignedToEmail: item.assigned_to_email, createdAt: item.created_at })),
     repositories: (repositoryResult.results ?? []).map(item => ({ id: item.id, name: item.name, displayRef: item.display_ref, language: item.language, fileCount: item.file_count })),
     results: (resultRows.results ?? []).map(item => ({ id: item.id, memberEmail: item.member_email, displayName: item.display_name, incidentName: item.incident_name, repositoryName: item.repository_name, score: item.score, durationMinutes: item.duration_minutes, status: item.status, completedAt: item.completed_at })),
+    analytics,
+    customIncidents:(customRows.results??[]).map(item=>({id:`custom:${item.id}`,name:item.title,repositoryId:item.repository_id})),
   };
 }
 
@@ -181,6 +189,7 @@ export async function createTeamAssignment(user: AuthenticatedUser, input: { rep
     const member = await db.prepare("SELECT id FROM team_members WHERE team_id = ? AND email = ? AND role = 'MEMBER'").bind(team.id, input.assignedToEmail).first<{ id: string }>();
     if (!member) throw new TeamServiceError("MEMBER_NOT_FOUND", "Choose a member from this team.", 404);
   }
+  if (incidentTemplateId.startsWith("custom:")) { const customId=incidentTemplateId.slice(7);const custom=await db.prepare("SELECT title,repository_id FROM custom_incidents WHERE id=? AND team_id=? AND status='PUBLISHED'").bind(customId,team.id).first<{title:string;repository_id:string}>();if(!custom||custom.repository_id!==input.repositoryId)throw new TeamServiceError("INCIDENT_NOT_FOUND","Choose a published custom incident for this repository.",404);incidentName=custom.title; }
   const now = new Date().toISOString();
   await db.prepare("INSERT INTO team_assignments (id, team_id, repository_id, repository_name, incident_template_id, incident_name, assigned_to_email, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(crypto.randomUUID(), team.id, input.repositoryId, repositoryName, incidentTemplateId, incidentName, input.assignedToEmail, now).run();

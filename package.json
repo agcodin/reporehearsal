@@ -15,6 +15,7 @@
     "test:e2e": "playwright test",
     "demo:setup": "node scripts/setup-demo.mjs",
     "demo:verify": "vitest run --config vitest.config.ts tests/integration/demo-flow.test.ts",
+    "audit:incidents": "vitest run --config vitest.config.ts tests/unit/generated-content-quality.test.ts",
     "sandbox:cleanup": "node scripts/cleanup-sandboxes.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
