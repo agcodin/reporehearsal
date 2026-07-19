@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { plans, priceForCadence, type BillingCadence, type PlanId } from "../../src/billing/plans";
 import { usePlan } from "../components/PlanProvider";
 
@@ -26,13 +27,13 @@ function DashboardMock({ plan }: { plan: PlanId }) {
 }
 
 export default function PricingClient() {
-  const { activePlan, activate, plan: current } = usePlan();
+  const { activePlan, plan: current } = usePlan();
+  const router = useRouter();
   const [exploredPlan, setExploredPlan] = useState<PlanId>("FREE");
   const [billing, setBilling] = useState<BillingCadence>("monthly");
 
   function choose(plan: PlanId) {
-    activate(plan);
-    document.getElementById("plan-confirmation")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    router.push(`/onboarding/account?plan=${plan}&billing=${billing}`);
   }
 
   function explore(plan: PlanId) {

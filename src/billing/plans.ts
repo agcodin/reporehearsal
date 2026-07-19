@@ -69,6 +69,10 @@ export function isPlanId(value: string | null): value is PlanId {
   return value === "FREE" || value === "PRO" || value === "TEAM";
 }
 
+export function isBillingCadence(value: string | null): value is BillingCadence {
+  return value === "weekly" || value === "monthly" || value === "annual";
+}
+
 export function planFor(id: PlanId) {
   return plans.find(plan => plan.id === id) ?? plans[0];
 }
@@ -83,6 +87,16 @@ export function priceForCadence(plan: Plan, billing: BillingCadence) {
   if (billing === "weekly") return { price: plan.id === "PRO" ? "$2.99" : "$5.99", cadence: "per week" };
   if (billing === "annual") return { price: `$${(Number(plan.price.slice(1)) * .8).toFixed(2)}`, cadence: "per month, billed annually" };
   return { price: plan.price, cadence: plan.cadence };
+}
+
+export function chargeForCadence(plan: Plan, billing: BillingCadence) {
+  if (plan.id === "FREE") return { amount: "$0.00", interval: "No recurring charge" };
+  if (billing === "weekly") return { amount: plan.id === "PRO" ? "$2.99" : "$5.99", interval: "Billed weekly" };
+  if (billing === "annual") {
+    const annualTotal = Number(plan.price.slice(1)) * .8 * 12;
+    return { amount: `$${annualTotal.toFixed(2)}`, interval: "Billed once per year" };
+  }
+  return { amount: plan.price, interval: "Billed monthly" };
 }
 
 export function formatBytes(bytes: number | null) { return bytes === null ? "Unlimited" : `${Math.round(bytes / MB)} MB`; }

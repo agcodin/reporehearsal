@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlanId, planFor, planRank, plans, priceForCadence } from "../../src/billing/plans";
+import { chargeForCadence, isBillingCadence, isPlanId, planFor, planRank, plans, priceForCadence } from "../../src/billing/plans";
 
 describe("plan catalog", () => {
   it("keeps the three plans in increasing entitlement order", () => {
@@ -21,5 +21,13 @@ describe("plan catalog", () => {
     expect(priceForCadence(planFor("PRO"), "weekly")).toEqual({ price: "$2.99", cadence: "per week" });
     expect(priceForCadence(planFor("TEAM"), "weekly")).toEqual({ price: "$5.99", cadence: "per week" });
     expect(priceForCadence(planFor("FREE"), "weekly")).toEqual({ price: "$0", cadence: "forever" });
+  });
+
+  it("describes the exact checkout charge safely", () => {
+    expect(isBillingCadence("annual")).toBe(true);
+    expect(isBillingCadence("daily")).toBe(false);
+    expect(chargeForCadence(planFor("PRO"), "monthly")).toEqual({ amount: "$9.99", interval: "Billed monthly" });
+    expect(chargeForCadence(planFor("TEAM"), "weekly")).toEqual({ amount: "$5.99", interval: "Billed weekly" });
+    expect(chargeForCadence(planFor("PRO"), "annual")).toEqual({ amount: "$95.90", interval: "Billed once per year" });
   });
 });
