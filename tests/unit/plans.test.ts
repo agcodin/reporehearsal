@@ -18,8 +18,8 @@ describe("plan catalog", () => {
   });
 
   it("offers the requested weekly prices", () => {
-    expect(priceForCadence(planFor("PRO"), "weekly")).toEqual({ price: "$3", cadence: "per week" });
-    expect(priceForCadence(planFor("TEAM"), "weekly")).toEqual({ price: "$6", cadence: "per week" });
+    expect(priceForCadence(planFor("PRO"), "weekly")).toEqual({ price: "$2.99", cadence: "per week" });
+    expect(priceForCadence(planFor("TEAM"), "weekly")).toEqual({ price: "$5.99", cadence: "per week" });
     expect(priceForCadence(planFor("FREE"), "weekly")).toEqual({ price: "$0", cadence: "forever" });
   });
 });

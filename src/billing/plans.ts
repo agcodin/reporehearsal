@@ -80,7 +80,7 @@ export function planFromRequest(request: Request) {
 
 export function priceForCadence(plan: Plan, billing: BillingCadence) {
   if (plan.id === "FREE") return { price: "$0", cadence: "forever" };
-  if (billing === "weekly") return { price: plan.id === "PRO" ? "$3" : "$6", cadence: "per week" };
+  if (billing === "weekly") return { price: plan.id === "PRO" ? "$2.99" : "$5.99", cadence: "per week" };
   if (billing === "annual") return { price: `$${(Number(plan.price.slice(1)) * .8).toFixed(2)}`, cadence: "per month, billed annually" };
   return { price: plan.price, cadence: plan.cadence };
 }
