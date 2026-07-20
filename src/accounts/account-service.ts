@@ -60,7 +60,7 @@ export async function ensureAccountSchema() {
 }
 
 // SQLite has no ADD COLUMN IF NOT EXISTS; table and column are fixed constants, never user input.
-async function ensureColumn(table: string, column: string, type: string) {
+export async function ensureColumn(table: string, column: string, type: string) {
   const db = database();
   const info = await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
   if (!(info.results ?? []).some(row => row.name === column)) await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();

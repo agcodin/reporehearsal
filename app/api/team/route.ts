@@ -8,7 +8,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("invite"), email: z.string().trim().email().max(254) }),
   z.object({ action: z.literal("remove-member"), memberId: z.string().uuid() }),
   z.object({ action: z.literal("leave-team"), teamId: z.string().uuid() }),
-  z.object({ action: z.literal("create-assignment"), repositoryId: z.string().min(1).max(100), incidentTemplateId: z.string().min(3).max(100), incidentName: z.string().min(3).max(120), assignedToEmail: z.union([z.literal("all"), z.string().email().max(254)]) }),
+  z.object({ action: z.literal("create-assignment"), repositoryId: z.string().min(1).max(100), incidentTemplateId: z.string().min(3).max(100), incidentName: z.string().min(3).max(120), assignedToEmail: z.union([z.literal("all"), z.string().email().max(254)]), dueInDays: z.number().int().min(0).max(90).optional() }),
 ]);
 
 function failure(error: unknown) {
