@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Josefin_Sans, Marcellus } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import AuthNavigation from "./components/AuthNavigation";
@@ -10,9 +10,9 @@ import "./spec.css";
 import "./workspace.css";
 import "./deco.css";
 
+// Engineering type system: IBM Plex Mono carries data, labels, and display; IBM Plex Sans carries prose.
 const mono = IBM_Plex_Mono({ variable: "--font-mono", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const display = Marcellus({ variable: "--font-display", subsets: ["latin"], weight: "400" });
-const bodyFont = Josefin_Sans({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const sans = IBM_Plex_Sans({ variable: "--font-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: { default: "RepoRehearsal", template: "%s · RepoRehearsal" },
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${mono.variable} ${display.variable} ${bodyFont.variable}`}>
+      <body className={`${mono.variable} ${sans.variable}`}>
         <PlanProvider>
         <a className="skip-link" href="#main-content">Skip to content</a>
         <header className="site-header">
