@@ -61,6 +61,9 @@ describe("repository incident brain", () => {
     expect(signalsFor("Investigation")).toContain("1 file opened");
     expect(signalsFor("Fix quality")).toContain("Original symptom still reproducible");
     expect(signalsFor("Verification")).toContain("Ran run-tests");
+    // The injected fault is not the user's edit, so an untouched workspace must report none.
+    expect(signalsFor("Fix quality")).toContain("No file was edited");
+    expect(signalsFor("Investigation")).toContain("No file was edited");
     // Hint deductions are attributed to the categories they were taken from.
     expect(signalsFor("Diagnosis").some(signal => signal.startsWith("−"))).toBe(true);
   });
