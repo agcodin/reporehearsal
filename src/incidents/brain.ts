@@ -164,8 +164,13 @@ export function applyGeneratedIncident(files: WorkspaceFile[], blueprint: Genera
   return files.map(file => file.path !== blueprint.targetPath ? { ...file } : { ...file, content: file.content.replace(blueprint.candidate.before, blueprint.candidate.after) });
 }
 
+// The faulty target content the user starts from: the clean baseline with the injected regression applied.
+export function injectedTargetContent(blueprint: GeneratedIncidentBlueprint): string {
+  return blueprint.baselineTarget.replace(blueprint.candidate.before, blueprint.candidate.after);
+}
+
 export function hasGeneratedWorkspaceEdits(blueprint: GeneratedIncidentBlueprint, files: WorkspaceFile[]): boolean {
-  const expectedTarget = blueprint.baselineTarget.replace(blueprint.candidate.before, blueprint.candidate.after);
+  const expectedTarget = injectedTargetContent(blueprint);
   const knownPaths = new Set(Object.keys(blueprint.baselineHashes));
   if (files.some(file => !knownPaths.has(file.path))) return true;
   return Object.entries(blueprint.baselineHashes).some(([path, baselineHash]) => {
@@ -232,8 +237,8 @@ export function evaluateGeneratedIncident(blueprint: GeneratedIncidentBlueprint,
   const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
   // changedPaths counts the injected fault itself, so it overstates the user's work by one
   // file. Signals must compare against the workspace as it was handed over, not the baseline.
-  const injectedTarget = blueprint.baselineTarget.replace(blueprint.candidate.before, blueprint.candidate.after);
-  const editedPaths = files.filter(file => stableHash(file.content) !== (file.path === blueprint.targetPath ? stableHash(injectedTarget) : blueprint.baselineHashes[file.path])).map(file => file.path);
+  const injected = injectedTargetContent(blueprint);
+  const editedPaths = files.filter(file => stableHash(file.content) !== (file.path === blueprint.targetPath ? stableHash(injected) : blueprint.baselineHashes[file.path])).map(file => file.path);
   const ranCommands = ["run-tests", "check-health", "run-build", "run-lint", "restart-service"].filter(id => commands.has(id));
   const breakdown = [
     { label: "Diagnosis", earned: diagnosis, possible: 25, signals: [`${context.hypotheses.length} ${context.hypotheses.length === 1 ? "hypothesis" : "hypotheses"} recorded`, openedFiles.has(blueprint.targetPath) ? `Opened the failing file ${blueprint.targetPath}` : `Never opened ${blueprint.targetPath}`, matchedRootCause ? "A hypothesis named the root cause" : "No hypothesis named the root cause"] },

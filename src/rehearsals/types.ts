@@ -15,7 +15,8 @@ export type RehearsalSession = {
   workspaceKey: string | null; ownerAccountId: string | null; createdAt: string; startedAt: string | null; completedAt: string | null; expiresAt: string;
   score: number | null; validation: ValidationResult | null; report: RehearsalReport | null;
 };
+export type RehearsalDiff = { path: string; before: string; after: string };
 export type RehearsalReport = {
   title: string; rootCause: string; summary: string; evidenceUsed: string[]; missedEvidence: string[]; prevention: string[];
-  score: number; passed: boolean; markdown: string; aiEnhanced: boolean;
+  score: number; passed: boolean; markdown: string; aiEnhanced: boolean; diff?: RehearsalDiff | null;
 };
