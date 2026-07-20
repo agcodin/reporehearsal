@@ -10,6 +10,7 @@ export const OAUTH_STATE_COOKIE = "rr_oauth_state";
 const USER_EMAIL_HEADER = "oai-authenticated-user-email";
 const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
 const USER_FULL_NAME_ENCODING_HEADER = "oai-authenticated-user-full-name-encoding";
+const GATEWAY_SECRET_HEADER = "x-gateway-identity-secret";
 const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
@@ -18,8 +19,15 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     const sessionUser = await getAuthSession(sessionToken);
     if (sessionUser) return sessionUser;
   }
+  return gatewayIdentity(await headers());
+}
 
-  const requestHeaders = await headers();
+// Identity asserted by request headers is only trustworthy behind a gateway that strips
+// them from client traffic. GATEWAY_IDENTITY_SECRET MUST stay unset on any deployment
+// reachable directly (the Worker), or callers can name themselves any user.
+function gatewayIdentity(requestHeaders: Headers): AuthenticatedUser | null {
+  const secret = process.env.GATEWAY_IDENTITY_SECRET?.trim();
+  if (!secret || requestHeaders.get(GATEWAY_SECRET_HEADER) !== secret) return null;
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
