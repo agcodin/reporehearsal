@@ -80,6 +80,18 @@ describe("repository incident brain", () => {
     expect(validation.score).toBeLessThan(0);
   });
 
+  it("guards normalizers that take arguments, not just the bare three", () => {
+    const files = [{ path: "src/tags.ts", content: "export function tags(row: { csv?: string }) {\n  return (row.csv ?? \"\").split(\",\").map(tag => tag.trim());\n}" }];
+    expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "nullable-value", targetPath: "src/tags.ts", method: "split" });
+    const blueprint = generateIncidentBlueprint(files, "INTERMEDIATE");
+    const injected = applyGeneratedIncident(files, blueprint);
+    // Removing the guard must leave the call and its arguments intact, or the fault is a syntax error.
+    expect(injected[0].content).toContain('row.csv.split(",")');
+    expect(injected[0].content).not.toContain("??");
+    const repaired = injected.map(file => ({ ...file, content: blueprint.baselineTarget }));
+    expect(evaluateGeneratedIncident(blueprint, repaired, { timeline: [], hypotheses: [], hintCount: 0 }).checks[0].status).toBe("passed");
+  });
+
   it("discovers a Python-specific fallback regression", () => {
     const files = [{ path: "app.py", content: "region = customer.region or 'US'\nreturn region.strip()" }];
     expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "language-fallback", language: "Python", targetPath: "app.py" });
