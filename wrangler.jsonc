@@ -10,6 +10,11 @@
   "observability": {
     "enabled": true
   },
+  // Sessions expire within ~60 minutes, so purge often enough that abandoned
+  // workspaces do not accumulate in R2 between runs.
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",

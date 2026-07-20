@@ -1,6 +1,8 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { cleanupExpiredRepositories } from "../src/repositories/repository-service";
+import { cleanupExpiredRehearsals } from "../src/rehearsals/session-service";
 
 interface Env {
   ASSETS: Fetcher;
@@ -41,6 +43,14 @@ const worker = {
     }
 
     return handler.fetch(request, env, ctx);
+  },
+
+  // Cron triggers invoke scheduled(), never an HTTP route, so this calls the cleanup
+  // functions directly. Errors propagate so a failed purge shows up as a failed invocation
+  // rather than silently leaving expired workspaces in R2 and D1.
+  async scheduled(_controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+    const [repositories, rehearsals] = await Promise.all([cleanupExpiredRepositories(), cleanupExpiredRehearsals()]);
+    console.log("Scheduled cleanup complete", { repositories, rehearsals });
   },
 };
 
