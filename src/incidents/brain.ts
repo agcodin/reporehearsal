@@ -222,12 +222,16 @@ export function evaluateGeneratedIncident(blueprint: GeneratedIncidentBlueprint,
   const prevention = Math.min(10, (testChanged ? 7 : 0) + (repaired && target !== blueprint.baselineTarget ? 3 : repaired ? 2 : 0));
   const communication = Math.min(5, (context.hypotheses.length ? 2 : 0) + (/because|evidence|log|record|response|config|test/i.test(hypotheses) ? 2 : 0) + (context.hypotheses.length > 1 ? 1 : 0));
   const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+  // changedPaths counts the injected fault itself, so it overstates the user's work by one
+  // file. Signals must compare against the workspace as it was handed over, not the baseline.
+  const injectedTarget = blueprint.baselineTarget.replace(blueprint.candidate.before, blueprint.candidate.after);
+  const editedPaths = files.filter(file => stableHash(file.content) !== (file.path === blueprint.targetPath ? stableHash(injectedTarget) : blueprint.baselineHashes[file.path])).map(file => file.path);
   const ranCommands = ["run-tests", "check-health", "run-build", "run-lint", "restart-service"].filter(id => commands.has(id));
   const breakdown = [
     { label: "Diagnosis", earned: diagnosis, possible: 25, signals: [`${context.hypotheses.length} ${context.hypotheses.length === 1 ? "hypothesis" : "hypotheses"} recorded`, openedFiles.has(blueprint.targetPath) ? `Opened the failing file ${blueprint.targetPath}` : `Never opened ${blueprint.targetPath}`, matchedRootCause ? "A hypothesis named the root cause" : "No hypothesis named the root cause"] },
-    { label: "Investigation", earned: investigation, possible: 20, signals: [`${plural(openedFiles.size, "file")} opened`, `${plural(commands.size, "distinct command")} or evidence source used`, `${plural(evidenceBeforeEdit, "investigation step")} before the first edit`] },
-    { label: "Fix quality", earned: fixQuality, possible: 25, signals: [repaired ? "Incident behavior restored" : "Original symptom still reproducible", unsafe ? "Unsafe shortcut detected" : "No unsafe shortcut detected", `${plural(changedPaths.length, "file")} changed from the snapshot`] },
-    { label: "Verification", earned: verification, possible: 15, signals: [ranCommands.length ? `Ran ${ranCommands.join(", ")}` : "No verification command was run", commands.has("run-tests") ? "Tests were run after editing" : "Tests were never run"] },
+    { label: "Investigation", earned: investigation, possible: 20, signals: [`${plural(openedFiles.size, "file")} opened`, `${plural(commands.size, "distinct command")} or evidence source used`, firstEdit < 0 ? "No file was edited" : `${plural(evidenceBeforeEdit, "investigation step")} before the first edit`] },
+    { label: "Fix quality", earned: fixQuality, possible: 25, signals: [repaired ? "Incident behavior restored" : "Original symptom still reproducible", unsafe ? "Unsafe shortcut detected" : "No unsafe shortcut detected", editedPaths.length ? `${plural(editedPaths.length, "file")} edited` : "No file was edited"] },
+    { label: "Verification", earned: verification, possible: 15, signals: [ranCommands.length ? `Ran ${ranCommands.join(", ")}` : "No verification command was run", commands.has("run-tests") ? "Tests were run" : "Tests were never run"] },
     { label: "Prevention", earned: prevention, possible: 10, signals: [testChanged ? "Regression coverage was updated" : blueprint.testPaths.length ? `No change to ${plural(blueprint.testPaths.length, "test file")}` : "No test files exist in this repository"] },
     { label: "Communication", earned: communication, possible: 5, signals: [context.hypotheses.length ? "Reasoning was recorded in writing" : "No written reasoning was recorded", /because|evidence|log|record|response|config|test/i.test(hypotheses) ? "Reasoning cited evidence" : "Reasoning did not cite evidence"] },
   ];
