@@ -62,6 +62,14 @@ function escapeRegExp(value: string) { return value.replace(/[.*+?^${}()|[\]\\]/
 function sourceFile(file: WorkspaceFile) { return /\.(?:c|cc|cjs|cpp|cs|cxx|go|h|hpp|java|js|jsx|kt|kts|mjs|php|py|rb|rs|scala|swift|ts|tsx)$/.test(file.path) && file.content.length <= 500_000; }
 function candidateId(kind: MutationKind, path: string) { return `${kind}-${stableHash(path)}`; }
 
+// Methods that only make sense on a present value, so guarding one is evidence of a real
+// null boundary. Keep to pure normalizers: a mutating or side-effecting call would make the
+// injected fault unreproducible.
+const NORMALIZER_METHODS = "trim|toUpperCase|toLowerCase|toString|toFixed|split|slice|substring|replace|replaceAll|padStart|padEnd|charAt|concat|normalize";
+// The default may be an empty string — `?? ""` is one of the most common guards there is.
+const NULL_FALLBACK_PATTERN = new RegExp(`\\(([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)+)\\s*(?:\\?\\?|\\|\\|)\\s*(["'\`][^"'\`\\n]{0,60}["'\`])\\)\\.(${NORMALIZER_METHODS})\\(`);
+const OPTIONAL_CHAIN_PATTERN = new RegExp(`([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)+)\\?\\.(${NORMALIZER_METHODS})\\(`);
+
 export function discoverIncidentCandidates(files: WorkspaceFile[]): IncidentCandidate[] {
   const candidates: IncidentCandidate[] = [];
   const ordered = [...files].sort((left, right) => left.path.localeCompare(right.path));
@@ -75,14 +83,14 @@ export function discoverIncidentCandidates(files: WorkspaceFile[]): IncidentCand
   }
 
   for (const file of ordered.filter(sourceFile)) {
-    const fallback = file.content.match(/\(([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)\s*\?\?\s*(["'`][^"'`\n]{1,60}["'`])\)\.(trim|toUpperCase|toLowerCase)\(\)/);
+    const fallback = file.content.match(NULL_FALLBACK_PATTERN);
     if (fallback) {
       const category: IncidentCategory = hasPrisma ? "database" : "external_dependency";
-      candidates.push({ id: candidateId("nullable-value", file.path), kind: "nullable-value", name: hasPrisma ? "Nullable record serialization failure" : "Missing value normalization failure", category, targetPath: file.path, confidence: hasPrisma ? 0.95 : 0.9, reason: `A real null-safe normalization boundary was found in ${file.path}.`, before: fallback[0], after: `${fallback[1]}.${fallback[3]}()`, subject: fallback[1], method: fallback[3] });
+      candidates.push({ id: candidateId("nullable-value", file.path), kind: "nullable-value", name: hasPrisma ? "Nullable record serialization failure" : "Missing value normalization failure", category, targetPath: file.path, confidence: hasPrisma ? 0.95 : 0.9, reason: `A real null-safe normalization boundary was found in ${file.path}.`, before: fallback[0], after: `${fallback[1]}.${fallback[3]}(`, subject: fallback[1], method: fallback[3] });
       continue;
     }
-    const optional = file.content.match(/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)\?\.(trim|toUpperCase|toLowerCase)\(\)/);
-    if (optional) candidates.push({ id: candidateId("nullable-value", file.path), kind: "nullable-value", name: "Optional value dereference", category: hasPrisma ? "database" : "external_dependency", targetPath: file.path, confidence: hasPrisma ? 0.92 : 0.87, reason: `An optional value is normalized safely in ${file.path}; the isolated incident removes that guard.`, before: optional[0], after: `${optional[1]}.${optional[2]}()`, subject: optional[1], method: optional[2] });
+    const optional = file.content.match(OPTIONAL_CHAIN_PATTERN);
+    if (optional) candidates.push({ id: candidateId("nullable-value", file.path), kind: "nullable-value", name: "Optional value dereference", category: hasPrisma ? "database" : "external_dependency", targetPath: file.path, confidence: hasPrisma ? 0.92 : 0.87, reason: `An optional value is normalized safely in ${file.path}; the isolated incident removes that guard.`, before: optional[0], after: `${optional[1]}.${optional[2]}(`, subject: optional[1], method: optional[2] });
   }
 
   for (const file of ordered.filter(sourceFile)) {
