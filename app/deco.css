@@ -208,10 +208,10 @@ label { color: var(--deco-gold-light); }
   padding-bottom: 20px !important;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
   overflow: hidden;
-  text-align: left;
+  text-align: center;
 }
 .home-hero::before { content: none; }
 .home-hero::after { content: none; }
@@ -230,7 +230,7 @@ label { color: var(--deco-gold-light); }
 .announcement-chip i,.live-chip i { width: 7px !important; height: 7px !important; border-radius: 0 !important; background: var(--deco-gold) !important; transform: none; }
 .home-hero h1 { max-width: 17ch !important; margin-top: 26px !important; font-family: var(--font-mono) !important; font-size: clamp(37px,5.3vw,66px) !important; font-weight: 500 !important; letter-spacing: -.035em !important; line-height: 1.02 !important; }
 .home-hero>p { max-width: 600px !important; margin-top: 22px !important; font-size: 18px !important; color: var(--deco-muted) !important; }
-.home-hero .actions { margin-top: 30px !important; }
+.home-hero .actions { margin-top: 30px !important; justify-content: center; }
 .home-hero .actions .button-ghost { position: relative; z-index: 1; background: transparent !important; }
 .home-hero>small { margin-top: 18px; color: var(--deco-muted) !important; font-family: var(--font-mono); font-size: 11px; letter-spacing: .02em; }
 .briefing-wrap { padding: 20px 0 104px !important; }
