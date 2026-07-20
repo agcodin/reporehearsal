@@ -144,8 +144,11 @@ function incidentCopy(candidate: IncidentCandidate) {
   return { summary: "The repository's approved quality command no longer resolves.", rootCause: `The ${candidate.scriptName} script in package.json was changed to a command that does not exist.`, report: "The verification pipeline fails before it can execute repository checks.", alert: `${candidate.scriptName} command not found`, impact: ["Repository verification", "Release confidence"], unaffected: ["Source files", "Installed dependency metadata"], logs: [`ERROR npm run ${candidate.scriptName} command not found: missing-rehearsal-command`, "INFO package installation completed"], database: ["source snapshot | unchanged", "package script | invalid command"], health: ["application UNKNOWN verification blocked", "package metadata DEGRADED"], hints: ["Read the failing command output.", "Inspect package.json scripts.", "Compare the command with the repository's installed tooling.", "Restore a valid project-owned quality command."] };
 }
 
-export function generateIncidentBlueprint(files: WorkspaceFile[], difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"): GeneratedIncidentBlueprint {
-  const candidate = discoverIncidentCandidates(files)[0];
+export function generateIncidentBlueprint(files: WorkspaceFile[], difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED", candidateId?: string): GeneratedIncidentBlueprint {
+  const candidates = discoverIncidentCandidates(files);
+  // An explicit choice (re-rolling a different fault in the same repo) wins; otherwise the
+  // highest-confidence candidate. A stale id falls back rather than failing the rehearsal.
+  const candidate = (candidateId ? candidates.find(item => item.id === candidateId) : undefined) ?? candidates[0];
   if (!candidate) throw new Error("No safe, repairable incident boundary was found in this repository. Try a TypeScript or JavaScript project with tests, runtime configuration, fetch calls, or null-safe data handling.");
   const target = files.find(file => file.path === candidate.targetPath);
   if (!target || !target.content.includes(candidate.before)) throw new Error("The selected repository incident boundary is no longer available.");
