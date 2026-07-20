@@ -47,5 +47,5 @@ export type ValidationResult = {
   passed: boolean;
   score: number;
   checks: { name: string; status: "passed" | "failed"; hidden?: boolean; detail: string }[];
-  breakdown: { label: string; earned: number; possible: number }[];
+  breakdown: { label: string; earned: number; possible: number; signals?: string[] }[];
 };
