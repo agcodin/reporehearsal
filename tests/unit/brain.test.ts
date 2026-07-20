@@ -68,6 +68,17 @@ describe("repository incident brain", () => {
     expect(signalsFor("Diagnosis").some(signal => signal.startsWith("−"))).toBe(true);
   });
 
+  it("injects a chosen non-default candidate so a repo can be re-rolled", () => {
+    const candidates = discoverIncidentCandidates(repository);
+    expect(candidates.length).toBeGreaterThan(1);
+    const second = candidates[1];
+    const blueprint = generateIncidentBlueprint(repository, "INTERMEDIATE", second.id);
+    expect(blueprint.candidate.id).toBe(second.id);
+    expect(blueprint.targetPath).toBe(second.targetPath);
+    // An unknown id falls back to the highest-confidence candidate rather than throwing.
+    expect(generateIncidentBlueprint(repository, "INTERMEDIATE", "no-such-candidate").candidate.id).toBe(candidates[0].id);
+  });
+
   it("falls back to a real package quality command when no stronger boundary exists", () => {
     const files = [{ path: "package.json", content: JSON.stringify({ scripts: { test: "vitest run" } }, null, 2) }];
     expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "package-script", targetPath: "package.json" });
