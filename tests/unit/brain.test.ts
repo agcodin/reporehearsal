@@ -49,6 +49,22 @@ describe("repository incident brain", () => {
     expect(validation.score).toBe(validation.breakdown.reduce((sum, item) => sum + item.earned, 0));
   });
 
+  it("explains every category with the signals the score was derived from", () => {
+    const blueprint = generateIncidentBlueprint(repository, "INTERMEDIATE");
+    const injected = applyGeneratedIncident(repository, blueprint);
+    const timeline = [event("file_opened", { path: blueprint.targetPath }), event("command_run", { commandId: "run-tests" })];
+    const validation = evaluateGeneratedIncident(blueprint, injected, { timeline, hypotheses: ["The container cannot reach postgres."], hintCount: 2 });
+    const signalsFor = (label: string) => validation.breakdown.find(item => item.label === label)?.signals ?? [];
+    expect(validation.breakdown.every(item => item.signals?.length)).toBe(true);
+    expect(signalsFor("Diagnosis")).toContain("1 hypothesis recorded");
+    expect(signalsFor("Diagnosis")).toContain(`Opened the failing file ${blueprint.targetPath}`);
+    expect(signalsFor("Investigation")).toContain("1 file opened");
+    expect(signalsFor("Fix quality")).toContain("Original symptom still reproducible");
+    expect(signalsFor("Verification")).toContain("Ran run-tests");
+    // Hint deductions are attributed to the categories they were taken from.
+    expect(signalsFor("Diagnosis").some(signal => signal.startsWith("−"))).toBe(true);
+  });
+
   it("falls back to a real package quality command when no stronger boundary exists", () => {
     const files = [{ path: "package.json", content: JSON.stringify({ scripts: { test: "vitest run" } }, null, 2) }];
     expect(discoverIncidentCandidates(files)[0]).toMatchObject({ kind: "package-script", targetPath: "package.json" });
