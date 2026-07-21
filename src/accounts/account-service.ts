@@ -55,8 +55,10 @@ export async function ensureAccountSchema() {
     db.prepare("CREATE INDEX IF NOT EXISTS account_repositories_owner_date_idx ON account_repositories(account_id, updated_at DESC)"),
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS account_repositories_source_unique ON account_repositories(account_id, source, external_id)"),
   ]);
-  // account_rehearsals predates the per-skill profile, so add the column on existing databases.
+  // account_rehearsals predates the per-skill profile and adaptive curriculum, so add columns
+  // on existing databases.
   await ensureColumn("account_rehearsals", "breakdown_json", "TEXT");
+  await ensureColumn("account_rehearsals", "category", "TEXT");
 }
 
 // SQLite has no ADD COLUMN IF NOT EXISTS; table and column are fixed constants, never user input.
@@ -67,12 +69,12 @@ export async function ensureColumn(table: string, column: string, type: string) 
 }
 
 type AccountRow = { id: string; email: string; display_name: string; default_mode: AccountMode; default_time_limit: number; created_at: string; updated_at: string };
-type RehearsalRow = { id: string; incident_template_id: string; incident_name: string; repository_name: string; mode: AccountMode; status: "COMPLETED" | "UNRESOLVED"; score: number; duration_minutes: number; hints_used: number; completed_at: string; breakdown_json: string | null };
+type RehearsalRow = { id: string; incident_template_id: string; incident_name: string; repository_name: string; mode: AccountMode; status: "COMPLETED" | "UNRESOLVED"; score: number; duration_minutes: number; hints_used: number; completed_at: string; breakdown_json: string | null; category: AccountRehearsal["category"] };
 type RepositoryRow = { id: string; source: AccountRepository["source"]; external_id: string | null; name: string; display_ref: string; language: string; framework: string; database: string; orm: string; test_framework: string; package_manager: string; file_count: number; created_at: string; updated_at: string };
 
 function profileFromRow(row: AccountRow): AccountProfile { return { id: row.id, email: row.email, displayName: row.display_name, defaultMode: row.default_mode, defaultTimeLimit: row.default_time_limit, createdAt: row.created_at, updatedAt: row.updated_at }; }
 function parseBreakdown(value: string | null): AccountRehearsal["breakdown"] { if (!value) return null; try { return JSON.parse(value) as AccountRehearsal["breakdown"]; } catch { return null; } }
-function rehearsalFromRow(row: RehearsalRow): AccountRehearsal { return { id: row.id, incidentTemplateId: row.incident_template_id, incidentName: row.incident_name, repositoryName: row.repository_name, mode: row.mode, status: row.status, score: row.score, durationMinutes: row.duration_minutes, hintsUsed: row.hints_used, completedAt: row.completed_at, breakdown: parseBreakdown(row.breakdown_json) }; }
+function rehearsalFromRow(row: RehearsalRow): AccountRehearsal { return { id: row.id, incidentTemplateId: row.incident_template_id, incidentName: row.incident_name, repositoryName: row.repository_name, mode: row.mode, status: row.status, score: row.score, durationMinutes: row.duration_minutes, hintsUsed: row.hints_used, completedAt: row.completed_at, breakdown: parseBreakdown(row.breakdown_json), category: row.category ?? null }; }
 function repositoryFromRow(row: RepositoryRow): AccountRepository { return { id: row.id, source: row.source, externalId: row.external_id, name: row.name, displayRef: row.display_ref, language: row.language, framework: row.framework, database: row.database, orm: row.orm, testFramework: row.test_framework, packageManager: row.package_manager, fileCount: row.file_count, createdAt: row.created_at, updatedAt: row.updated_at }; }
 
 export async function ensureAccount(email: string, displayName: string): Promise<AccountProfile> {
@@ -86,7 +88,7 @@ export async function ensureAccount(email: string, displayName: string): Promise
 
 export async function getAccountDashboard(email: string, displayName: string): Promise<AccountDashboard> {
   const profile = await ensureAccount(email, displayName); const db = database();
-  const result = await db.prepare("SELECT id, incident_template_id, incident_name, repository_name, mode, status, score, duration_minutes, hints_used, completed_at, breakdown_json FROM account_rehearsals WHERE account_id = ? ORDER BY completed_at DESC LIMIT 50").bind(profile.id).all<RehearsalRow>();
+  const result = await db.prepare("SELECT id, incident_template_id, incident_name, repository_name, mode, status, score, duration_minutes, hints_used, completed_at, breakdown_json, category FROM account_rehearsals WHERE account_id = ? ORDER BY completed_at DESC LIMIT 50").bind(profile.id).all<RehearsalRow>();
   const repositoryResult = await db.prepare("SELECT id, source, external_id, name, display_ref, language, framework, database, orm, test_framework, package_manager, file_count, created_at, updated_at FROM account_repositories WHERE account_id = ? ORDER BY updated_at DESC LIMIT 50").bind(profile.id).all<RepositoryRow>();
   const rehearsals = (result.results ?? []).map(rehearsalFromRow);
   const repositories = (repositoryResult.results ?? []).map(repositoryFromRow);
@@ -102,8 +104,8 @@ export async function updateAccountPreferences(email: string, displayName: strin
 export async function saveAccountRehearsal(email: string, displayName: string, input: Omit<AccountRehearsal, "completedAt"> & { completedAt?: string }) {
   const profile = await ensureAccount(email, displayName); const now = new Date().toISOString(); const completedAt = input.completedAt ?? now;
   const breakdownJson = input.breakdown?.length ? JSON.stringify(input.breakdown.map(item => ({ label: item.label, earned: item.earned, possible: item.possible }))) : null;
-  await database().prepare(`INSERT INTO account_rehearsals (id, account_id, incident_template_id, incident_name, repository_name, mode, status, score, duration_minutes, hints_used, completed_at, created_at, breakdown_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`).bind(input.id, profile.id, input.incidentTemplateId, input.incidentName, input.repositoryName, input.mode, input.status, input.score, input.durationMinutes, input.hintsUsed, completedAt, now, breakdownJson).run();
+  await database().prepare(`INSERT INTO account_rehearsals (id, account_id, incident_template_id, incident_name, repository_name, mode, status, score, duration_minutes, hints_used, completed_at, created_at, breakdown_json, category)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`).bind(input.id, profile.id, input.incidentTemplateId, input.incidentName, input.repositoryName, input.mode, input.status, input.score, input.durationMinutes, input.hintsUsed, completedAt, now, breakdownJson, input.category ?? null).run();
   return { ...input, completedAt };
 }
 
