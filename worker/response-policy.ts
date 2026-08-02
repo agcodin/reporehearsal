@@ -5,9 +5,7 @@ const PUBLIC_DOCUMENT_PATHS = new Set([
   "/pricing",
   "/privacy",
   "/recruiting",
-  "/rehearsals/new",
   "/repositories/curated",
-  "/team/studio",
 ]);
 
 const SEARCH_DOCUMENT_PATHS = new Set(["/robots.txt", "/sitemap.xml"]);

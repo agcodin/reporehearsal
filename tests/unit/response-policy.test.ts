@@ -29,6 +29,11 @@ describe("Worker response policy", () => {
 
     const api = applyResponsePolicy(new Request("https://example.com/api/account"), new Response("{}", { headers: { "Content-Type": "application/json" } }));
     expect(api.headers.get("cache-control")).toBe("no-store, must-revalidate");
+
+    for (const path of ["/rehearsals/new", "/team/studio"]) {
+      const entry = applyResponsePolicy(new Request(`https://example.com${path}`), html());
+      expect(entry.headers.get("cache-control")).toBe("no-store, must-revalidate");
+    }
   });
 
   it("gives crawler documents a longer public cache policy", () => {

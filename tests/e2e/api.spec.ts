@@ -26,13 +26,19 @@ test("crawler documents publish the public route inventory",async({request})=>{
 });
 test("anonymous primary actions always have navigable fallbacks",async({page})=>{
   await page.goto("/rehearsals/new");
-  await page.getByRole("link",{name:"Continue",exact:true}).click();
+  const continueLink=page.getByRole("link",{name:"Continue",exact:true});
+  await expect(continueLink).toHaveAttribute("href","/rehearsals/new?step=2");
+  await continueLink.click();
   await expect(page).toHaveURL(/\/rehearsals\/new\?.*step=2/);
   await expect(page.getByRole("heading",{name:"Choose the kind of failure"})).toBeVisible();
 
   await page.goto("/team/studio");
   const preview=page.getByRole("link",{name:"Open Team preview →",exact:true});
   await expect(preview).toHaveAttribute("href","/team/studio/demo");
+  await preview.click();
+  await expect(page).toHaveURL(/\/team\/studio\/demo$/);
+  await expect(page.getByRole("heading",{name:"Turn one reviewed fix into repeatable practice."})).toBeVisible();
+  await page.goto("/team/studio");
   const signin=page.getByRole("link",{name:"Sign in to create incidents",exact:true});
   await expect(signin).toHaveAttribute("href","/signin?return_to=%2Fteam%2Fstudio");
 });
