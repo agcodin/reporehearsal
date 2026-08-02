@@ -30,10 +30,10 @@ export const plans: Plan[] = [
     eyebrow: "EXPLORE THE LOOP",
     price: "$0",
     cadence: "forever",
-    description: "Learn the incident workflow with starter cases and the shared Challenge of the Day.",
+    description: "Learn the incident workflow with 10 fixed cases and the shared Challenge of the Day.",
     cta: "Use Free",
     href: "/rehearsals/new",
-    features: ["Ten production-style incidents", "Challenge of the Day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
+    features: ["10 fixed production-style incidents", "Challenge of the Day", "20 MB repository analysis", "Deterministic validation", "Basic after-action report"],
     limits: { repositoryUploadBytes: 20 * MB, repositoryFiles: 3_000, maxTextFileBytes: 1 * MB },
   },
   {
@@ -45,7 +45,7 @@ export const plans: Plan[] = [
     description: "Practice independently, keep your progress, and get deeper coaching after every repair.",
     cta: "Activate Pro preview",
     href: "/dashboard",
-    features: ["Everything in Free", "75 MB repository analysis", "110-project repository roulette", "Interview mode", "Advanced grading reports", "Saved progress", "Reusable repository library"],
+    features: ["Everything in Free", "75 MB repository analysis", "110 curated repositories with repository-specific challenges", "Interview mode", "Advanced grading reports", "Saved progress", "Reusable repository library"],
     limits: { repositoryUploadBytes: 75 * MB, repositoryFiles: 15_000, maxTextFileBytes: 4 * MB },
   },
   {

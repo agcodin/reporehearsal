@@ -5,6 +5,35 @@ import { strToU8, zipSync } from "fflate";
 const gatewaySecret=process.env.GATEWAY_IDENTITY_SECRET?.trim();
 if(!gatewaySecret)throw new Error("Set GATEWAY_IDENTITY_SECRET in .dev.vars and export it for the e2e run.");
 const authenticatedHeaders={"x-gateway-identity-secret":gatewaySecret,"oai-authenticated-user-email":"qa@reporehearsal.dev","oai-authenticated-user-full-name":"Repo%20QA","oai-authenticated-user-full-name-encoding":"percent-encoded-utf-8"};
+test("public pages expose hardened headers while private pages remain uncached",async({request})=>{
+  const pricing=await request.get("/pricing");
+  expect(pricing.ok()).toBeTruthy();
+  expect(pricing.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(pricing.headers()["strict-transport-security"]).toContain("max-age=31536000");
+  expect(pricing.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(pricing.headers()["cache-control"]).toBe("public, max-age=300, stale-while-revalidate=3600");
+  const dashboard=await request.get("/dashboard",{headers:authenticatedHeaders});
+  expect(dashboard.ok()).toBeTruthy();
+  expect(dashboard.headers()["cache-control"]).toBe("no-store, must-revalidate");
+});
+test("crawler documents publish the public route inventory",async({request})=>{
+  const sitemap=await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBeTruthy();
+  expect(await sitemap.text()).toContain("/team/studio");
+  const robots=await request.get("/robots.txt");
+  expect(robots.ok()).toBeTruthy();
+  expect(await robots.text()).toContain("Sitemap: https://repo-rehearsal.aryangaur926.workers.dev/sitemap.xml");
+});
+test("sign-in and the authenticated dashboard render their intended states",async({request})=>{
+  const signin=await request.get("/signin");
+  expect(signin.ok()).toBeTruthy();
+  expect(await signin.text()).toContain("Sign in to RepoRehearsal");
+  const dashboard=await request.get("/dashboard",{headers:authenticatedHeaders});
+  expect(dashboard.ok()).toBeTruthy();
+  const body=await dashboard.text();
+  expect(body).toContain("Repo QA");
+  expect(body).toContain("Start a rehearsal");
+});
 test("demo API exposes repository and approved command policy",async({request})=>{const repositories=await request.get("/api/repositories");expect(repositories.ok()).toBeTruthy();expect((await repositories.json()).repositories[0].id).toBe("billing-demo");const blocked=await request.post("/api/rehearsals/demo/commands",{data:{commandId:"curl-external-site"}});expect(blocked.status()).toBe(403);const approved=await request.post("/api/rehearsals/demo/commands",{data:{commandId:"run-tests"}});expect(approved.ok()).toBeTruthy()});
 test("GitHub import rejects non-GitHub hosts before fetching",async({request})=>{const response=await request.post("/api/repositories/github",{headers:authenticatedHeaders,data:{url:"https://example.com/acme/repository"}});expect(response.status()).toBe(400);expect((await response.json()).error.code).toBe("UNSUPPORTED_HOST")});
 test("account APIs require server-verified identity",async({request})=>{const account=await request.get("/api/account");expect(account.status()).toBe(401);expect((await account.json()).error.code).toBe("AUTHENTICATION_REQUIRED");const save=await request.post("/api/account/rehearsals",{data:{id:"16a8991b-1aa7-46c2-9ddb-f11e2550c601",incidentTemplateId:"db-required-field-migration-v1",incidentName:"Required field migration",repositoryName:"Billing Demo",mode:"GUIDED",status:"COMPLETED",score:90,durationMinutes:18,hintsUsed:0}});expect(save.status()).toBe(401)});
