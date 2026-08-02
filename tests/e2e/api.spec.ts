@@ -33,11 +33,18 @@ test("anonymous primary actions always have navigable fallbacks",async({page})=>
   await expect(page.getByRole("heading",{name:"Choose the kind of failure"})).toBeVisible();
 
   await page.goto("/team/studio");
-  const preview=page.getByRole("link",{name:"Open Team preview →",exact:true});
+  const preview=page.getByRole("link",{name:"Try the interactive Team preview →",exact:true});
   await expect(preview).toHaveAttribute("href","/team/studio/demo");
   await preview.click();
   await expect(page).toHaveURL(/\/team\/studio\/demo$/);
-  await expect(page.getByRole("heading",{name:"Turn one reviewed fix into repeatable practice."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Build and assign a safe incident."})).toBeVisible();
+  await page.getByRole("button",{name:"Create review draft →"}).click();
+  await expect(page.getByRole("heading",{name:"Approve the incident contract"})).toBeVisible();
+  await page.getByRole("button",{name:"Approve incident →"}).click();
+  await expect(page.getByRole("heading",{name:"Invite and assign"})).toBeVisible();
+  await page.getByRole("button",{name:"Send invite"}).click();
+  await page.getByRole("button",{name:"Assign challenge →"}).click();
+  await expect(page.getByText("Assignment ready")).toBeVisible();
   await page.goto("/team/studio");
   const signin=page.getByRole("link",{name:"Sign in to create incidents",exact:true});
   await expect(signin).toHaveAttribute("href","/signin?return_to=%2Fteam%2Fstudio");

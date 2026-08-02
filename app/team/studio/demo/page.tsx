@@ -1,4 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-export const metadata:Metadata={title:"Team Incident Studio demo",description:"See how a real production fix becomes a safe, repeatable repository challenge."};
-export default function StudioDemo(){return <main className="studio-demo app-page"><header><p className="not-found-code">PUBLIC TEAM PREVIEW</p><h1>Turn one reviewed fix into repeatable practice.</h1><p>This read-only example shows the exact contract a manager approves. No account or repository access is required.</p><div className="actions"><Link className="button button-dark" href="/signin?return_to=%2Fteam%2Fstudio">Build one with your team →</Link><Link className="button button-ghost" href="/pricing">See Team pricing</Link></div></header><div className="studio-demo-flow"><section><span>1 · SOURCE</span><h2>Real pull request</h2><code>- return response.json()<br/>+ if (!response.ok) throw new ProviderError(response.status)<br/>+ return response.json()</code><p>The reviewed post-fix lines are the known-good baseline. The pre-fix lines become a reversible fault.</p></section><section><span>2 · CONTRACT</span><h2>Manager review</h2><dl><div><dt>Signal</dt><dd>Provider sync fails only on upstream 503 responses.</dd></div><div><dt>Evidence</dt><dd>503 status, parser error, growing retry queue.</dd></div><div><dt>Validation</dt><dd>Non-success responses never reach success-payload parsing.</dd></div></dl></section><section><span>3 · ASSIGN</span><h2>Safe team challenge</h2><ul><li>Original repository is never modified.</li><li>Outbound network stays blocked.</li><li>Scores come from deterministic checks.</li><li>The manager sees each submitted result.</li></ul></section></div><footer><b>What Team unlocks</b><p>Persistent incident libraries, five invited teammates, assignments, results, funnel analytics, PR/diff drafting, and PagerDuty, Datadog, or Jira export imports.</p></footer></main>}
+import TeamStudioPreview from "./TeamStudioPreview";
+
+export const metadata: Metadata = {
+  title: "Interactive Team Incident Studio demo",
+  description: "Try the complete Team workflow: import a reviewed change, approve an incident contract, invite a teammate, and assign the challenge."
+};
+
+export default function StudioDemo() {
+  return <TeamStudioPreview />;
+}
