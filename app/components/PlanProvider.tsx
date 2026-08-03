@@ -1,9 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { isPlanId, planFor, planRank, type PlanId } from "../../src/billing/plans";
+import { planFor, planRank, type PlanId } from "../../src/billing/plans";
 
-const STORAGE_KEY = "rr-preview-plan";
 type PlanContextValue = { activePlan: PlanId; ready: boolean; activate: (plan: PlanId) => void; includes: (plan: PlanId) => boolean };
 const PlanContext = createContext<PlanContextValue | null>(null);
 
@@ -12,17 +11,18 @@ export default function PlanProvider({ children }: { children: React.ReactNode }
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (isPlanId(stored)) setActivePlan(stored);
-      setReady(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let current = true;
+    void fetch("/api/billing/subscription", { cache: "no-store" })
+      .then(async response => response.ok ? await response.json() : null)
+      .then(summary => { if (current && (summary?.plan === "FREE" || summary?.plan === "PRO" || summary?.plan === "TEAM")) setActivePlan(summary.plan); })
+      .catch(() => { /* The authenticated API remains the source of truth for protected actions. */ })
+      .finally(() => { if (current) setReady(true); });
+    return () => { current = false; };
   }, []);
 
   const activate = useCallback((plan: PlanId) => {
-    setActivePlan(plan);
-    window.localStorage.setItem(STORAGE_KEY, plan);
+    if (plan === "FREE") { setActivePlan("FREE"); return; }
+    window.location.assign(`/onboarding/account?plan=${plan}&billing=monthly`);
   }, []);
 
   const value = useMemo(() => ({ activePlan, ready, activate, includes: (plan: PlanId) => planRank[activePlan] >= planRank[plan] }), [activePlan, activate, ready]);

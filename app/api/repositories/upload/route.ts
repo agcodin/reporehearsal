@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "../../../auth";
 import { saveAccountRepository } from "../../../../src/accounts/account-service";
 import { analyzeUploadedFiles, extractZipUpload, RepositoryUploadError, validateFolderUpload, type UploadedFile } from "../../../../src/repositories/upload/analyzer";
-import { formatBytes, planFromRequest } from "../../../../src/billing/plans";
+import { formatBytes, planFor } from "../../../../src/billing/plans";
+import { planForUser } from "../../../../src/billing/stripe";
 import { saveRepository } from "../../../../src/repositories/repository-service";
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
 
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
     const user = await getAuthenticatedUser();
     if (!user) return NextResponse.json({ error: { code: "ACCOUNT_REQUIRED", message: "Sign in before uploading a codebase.", correlationId } }, { status: 401 });
     await consumeRateLimit(request, "repository-upload", 10, 3_600);
-    const plan = planFromRequest(request);
+    const plan = planFor(await planForUser(user));
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (plan.limits.repositoryUploadBytes !== null && contentLength > plan.limits.repositoryUploadBytes + 1_000_000) throw new RepositoryUploadError("UPLOAD_TOO_LARGE", `The upload exceeds the ${formatBytes(plan.limits.repositoryUploadBytes)} ${plan.name} limit.`, 413);
     const form = await request.formData();

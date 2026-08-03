@@ -6,7 +6,8 @@ import { saveRepository } from "../../../../src/repositories/repository-service"
 import { consumeRateLimit, RateLimitError } from "../../../../src/security/rate-limit";
 import { analyzeRepository } from "../../../../src/repositories/analyzer";
 import { GENERATED_INCIDENT_ID } from "../../../../src/incidents/brain";
-import { planFromRequest } from "../../../../src/billing/plans";
+import { planFor } from "../../../../src/billing/plans";
+import { planForUser } from "../../../../src/billing/stripe";
 
 export async function POST(request: Request) {
   const correlationId = crypto.randomUUID();
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
     const user = await getAuthenticatedUser();
     if (!user) return NextResponse.json({ error: { code: "ACCOUNT_REQUIRED", message: "Sign in before importing a repository.", correlationId } }, { status: 401 });
     await consumeRateLimit(request, "github-import", 10, 3_600);
-    const plan = planFromRequest(request);
+    const plan = planFor(await planForUser(user));
     const body = githubImportRequestSchema.safeParse(await request.json());
     if (!body.success) return NextResponse.json({ error: { code: "INVALID_REQUEST", message: "Enter a valid GitHub repository URL.", correlationId } }, { status: 400 });
     const repository = await importPublicGitHubRepository(body.data.url, { token: process.env.GITHUB_TOKEN, limits: plan.limits });

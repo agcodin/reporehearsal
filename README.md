@@ -72,6 +72,12 @@ docker compose -f demo-repositories/billing-service/docker-compose.yml up --buil
 
 Copy `.env.example`. `OPENAI_API_KEY` is optional and `OPENAI_MODEL` defaults to `gpt-5.6`. `CLEANUP_SECRET` protects the scheduled cleanup endpoint. Google and GitHub sign-in require their respective `*_OAUTH_CLIENT_ID` and `*_OAUTH_CLIENT_SECRET` values. Cloudflare supplies the D1 `DB` and R2 `REPOSITORIES` bindings. Never commit `.env` or OAuth credentials.
 
+### Stripe subscriptions
+
+RepoRehearsal uses hosted Stripe Checkout for Pro and Team subscriptions, including a 7-day trial and Stripe-hosted promotion-code entry. Create six recurring Stripe Prices (Pro and Team × weekly, monthly, annual), then add the resulting `price_…` IDs as the six `STRIPE_PRICE_*` Worker secrets in `.env.example`. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as Worker secrets too.
+
+In Stripe, register `https://reporehersal.com/api/billing/webhook` and subscribe it to `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. Enable the Stripe Customer Portal so users can update payment details. Create coupons and active Promotion Codes in Stripe; Checkout automatically exposes the “Add promotion code” control. Apply the D1 migration `0007_stripe_billing.sql` before enabling the Checkout buttons.
+
 ## Accounts and demo mode
 
 No credentials are required to view public pages, complete the built-in incident, paste a public GitHub link, or upload a local codebase. Anonymous repository snapshots expire after 24 hours and are authorized by an opaque browser-session token. Sign in with ChatGPT, Google, or GitHub to save results, preferences, and reusable snapshots. RepoRehearsal accepts only verified provider emails, stores provider access tokens only in memory for the callback request, and persists only a provider subject plus a hashed application session token. Provider passwords and access tokens are never stored.
