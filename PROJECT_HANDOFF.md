@@ -18,7 +18,7 @@ Open that folder in an editor or use it as the working directory for all command
 
 ## Public locations
 
-- Production app: <https://reporehersal.com>
+- Production app: <https://reporehearsal.com>
 - Workers.dev fallback: <https://repo-rehearsal.aryangaur926.workers.dev>
 - GitHub repository: <https://github.com/agcodin/reporehearsal>
 - Cloudflare Worker name: `repo-rehearsal`

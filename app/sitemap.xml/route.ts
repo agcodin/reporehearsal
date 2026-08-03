@@ -1,4 +1,4 @@
-const origin = "https://reporehersal.com";
+const origin = "https://reporehearsal.com";
 
 const routes = [
   ["/", "weekly", "1.0"],

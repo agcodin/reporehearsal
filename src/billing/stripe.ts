@@ -95,7 +95,7 @@ function priceId(plan: StripePlan, cadence: BillingCadence): string {
 
 function originFor(request: Request) {
   const origin = new URL(request.url).origin;
-  if (origin !== "https://reporehersal.com" && origin !== "https://repo-rehearsal.aryangaur926.workers.dev" && !origin.startsWith("http://localhost:")) throw new BillingError("INVALID_ORIGIN", "Checkout must be started from RepoRehearsal.", 400);
+  if (origin !== "https://reporehearsal.com" && origin !== "https://repo-rehearsal.aryangaur926.workers.dev" && !origin.startsWith("http://localhost:")) throw new BillingError("INVALID_ORIGIN", "Checkout must be started from RepoRehearsal.", 400);
   return origin;
 }
 

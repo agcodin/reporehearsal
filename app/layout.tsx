@@ -15,11 +15,11 @@ const mono = IBM_Plex_Mono({ variable: "--font-mono", subsets: ["latin"], weight
 const sans = IBM_Plex_Sans({ variable: "--font-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://reporehersal.com"),
+  metadataBase: new URL("https://reporehearsal.com"),
   title: { default: "RepoRehearsal", template: "%s · RepoRehearsal" },
   description: "Break it safely. Debug it seriously. Practice production incident response in an isolated repository sandbox.",
   icons: { icon: "/favicon.svg" },
-  openGraph: { type: "website", siteName: "RepoRehearsal", url: "https://reporehersal.com" },
+  openGraph: { type: "website", siteName: "RepoRehearsal", url: "https://reporehearsal.com" },
 };
 
 export const dynamic = "force-dynamic";

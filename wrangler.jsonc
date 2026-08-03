@@ -10,6 +10,14 @@
   "workers_dev": true,
   "routes": [
     {
+      "pattern": "reporehearsal.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.reporehearsal.com",
+      "custom_domain": true
+    },
+    {
       "pattern": "reporehersal.com",
       "custom_domain": true
     },

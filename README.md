@@ -76,7 +76,7 @@ Copy `.env.example`. `OPENAI_API_KEY` is optional and `OPENAI_MODEL` defaults to
 
 RepoRehearsal uses hosted Stripe Checkout for Pro and Team subscriptions, including a 7-day trial and Stripe-hosted promotion-code entry. Create six recurring Stripe Prices (Pro and Team × weekly, monthly, annual), then add the resulting `price_…` IDs as the six `STRIPE_PRICE_*` Worker secrets in `.env.example`. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as Worker secrets too.
 
-In Stripe, register `https://reporehersal.com/api/billing/webhook` and subscribe it to `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. Enable the Stripe Customer Portal so users can update payment details. Create coupons and active Promotion Codes in Stripe; Checkout automatically exposes the “Add promotion code” control. Apply the D1 migration `0007_stripe_billing.sql` before enabling the Checkout buttons.
+In Stripe, register `https://reporehearsal.com/api/billing/webhook` and subscribe it to `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. Enable the Stripe Customer Portal so users can update payment details. Create coupons and active Promotion Codes in Stripe; Checkout automatically exposes the “Add promotion code” control. Apply the D1 migration `0007_stripe_billing.sql` before enabling the Checkout buttons.
 
 ## Accounts and demo mode
 
@@ -86,8 +86,8 @@ No credentials are required to view public pages, complete the built-in incident
 
 Register web OAuth clients with these production callback URLs:
 
-- Google: `https://reporehersal.com/auth/google/callback`
-- GitHub: `https://reporehersal.com/auth/github/callback`
+- Google: `https://reporehearsal.com/auth/google/callback`
+- GitHub: `https://reporehearsal.com/auth/github/callback`
 
 For local OAuth testing, create separate development clients with `http://localhost:3000/auth/google/callback` and `http://localhost:3000/auth/github/callback`. Set the four OAuth values as Cloudflare Worker secrets in production. Apply D1 migrations before deploying a version that enables these providers.
 

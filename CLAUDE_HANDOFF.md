@@ -32,7 +32,7 @@ Open that directory in your editor before making changes.
 
 ### Production sites
 
-- Primary production domain: <https://reporehersal.com>
+- Primary production domain: <https://reporehearsal.com>
 - Cloudflare Worker fallback: <https://repo-rehearsal.aryangaur926.workers.dev>
 - Cloudflare Sites mirror: <https://reporehearsal-demo-2026.aryangaur926.chatgpt.site>
 
@@ -91,8 +91,8 @@ npx wrangler secret put OPENAI_API_KEY
 For OAuth, register these callback URLs in each provider dashboard:
 
 ```text
-https://reporehersal.com/auth/google/callback
-https://reporehersal.com/auth/github/callback
+https://reporehearsal.com/auth/google/callback
+https://reporehearsal.com/auth/github/callback
 ```
 
 If using another domain, add matching callback URLs for that domain too. Do not change provider callback handling without checking `src/auth/oauth-providers.ts`.
@@ -243,7 +243,7 @@ Do not expose, commit, or persist the short-lived Sites credential.
 14. **Run a formal accessibility audit.** Test keyboard navigation, focus states, contrast, semantic labels, screen-reader behavior, and mobile layouts across every major journey.
 15. **Add browser E2E coverage.** Expand Playwright coverage for sign-in, imports, workspace edits, score submission, daily leaderboard rules, Team assignment, recruiting, and payment-gate behavior.
 16. **Simplify duplicate/legacy files.** There are a few historical files with names such as `page 2.tsx` and `Workspace 2.tsx`. Confirm they are unused before removing them, then clean them up in a dedicated, tested change.
-17. **Custom domain connected.** `reporehersal.com` is the canonical production hostname; keep OAuth callback allowlists synchronized with it.
+17. **Custom domain connected.** `reporehearsal.com` is the canonical production hostname; keep OAuth callback allowlists synchronized with it.
 
 ## 10. Guardrails for future changes
 

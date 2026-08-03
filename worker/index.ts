@@ -32,8 +32,8 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.hostname === "www.reporehersal.com") {
-      url.hostname = "reporehersal.com";
+    if (url.hostname === "reporehersal.com" || url.hostname === "www.reporehersal.com" || url.hostname === "www.reporehearsal.com") {
+      url.hostname = "reporehearsal.com";
       return applyResponsePolicy(request, Response.redirect(url, 308));
     }
 
