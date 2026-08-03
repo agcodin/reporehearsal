@@ -91,7 +91,7 @@ npx wrangler secret put OPENAI_API_KEY
 For OAuth, register these callback URLs in each provider dashboard:
 
 ```text
-https://reporehersal.com/auth/openai/callback
+https://reporehersal.com/auth/google/callback
 https://reporehersal.com/auth/github/callback
 ```
 

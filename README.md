@@ -80,8 +80,8 @@ No credentials are required to view public pages, complete the built-in incident
 
 Register web OAuth clients with these production callback URLs:
 
-- OpenAI: `https://reporehersal.com/auth/openai/callback`
-- GitHub (if re-enabled): `https://reporehersal.com/auth/github/callback`
+- Google: `https://reporehersal.com/auth/google/callback`
+- GitHub: `https://reporehersal.com/auth/github/callback`
 
 For local OAuth testing, create separate development clients with `http://localhost:3000/auth/google/callback` and `http://localhost:3000/auth/github/callback`. Set the four OAuth values as Cloudflare Worker secrets in production. Apply D1 migrations before deploying a version that enables these providers.
 
