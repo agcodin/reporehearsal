@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getPublicRehearsalResult } from "../../../src/rehearsals/public-results";
 
 export const dynamic="force-dynamic";
-const origin="https://repo-rehearsal.aryangaur926.workers.dev";
+const origin="https://reporehersal.com";
 function duration(seconds:number){return`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")}`}
 
 export async function generateMetadata({params}:{params:Promise<{id:string}>}):Promise<Metadata>{const{id}=await params;const result=await getPublicRehearsalResult(id);if(!result)return{title:"Verified result not found",robots:{index:false,follow:true}};const title=`${result.score}/100 · ${result.incidentName}`;const description=`Verified RepoRehearsal result on ${result.repositoryName}. Deterministic score, ${duration(result.durationSeconds)} completion time.`;return{title,description,robots:{index:true,follow:true},alternates:{canonical:`${origin}/verify/${id}`},openGraph:{title,description,type:"website",url:`${origin}/verify/${id}`,siteName:"RepoRehearsal",images:[{url:`${origin}/api/og/result?id=${encodeURIComponent(id)}`,width:1200,height:630,alt:title}]},twitter:{card:"summary_large_image",title,description,images:[`${origin}/api/og/result?id=${encodeURIComponent(id)}`]}}}

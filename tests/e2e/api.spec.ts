@@ -22,7 +22,7 @@ test("crawler documents publish the public route inventory",async({request})=>{
   expect(await sitemap.text()).toContain("/team/studio");
   const robots=await request.get("/robots.txt");
   expect(robots.ok()).toBeTruthy();
-  expect(await robots.text()).toContain("Sitemap: https://repo-rehearsal.aryangaur926.workers.dev/sitemap.xml");
+  expect(await robots.text()).toContain("Sitemap: https://reporehersal.com/sitemap.xml");
 });
 test("anonymous primary actions always have navigable fallbacks",async({page})=>{
   await page.goto("/rehearsals/new");

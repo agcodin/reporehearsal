@@ -12,7 +12,7 @@ Disallow: /verify/
 
 Content-Signal: search=yes, ai-input=yes, ai-train=no
 
-Sitemap: https://repo-rehearsal.aryangaur926.workers.dev/sitemap.xml
+Sitemap: https://reporehersal.com/sitemap.xml
 `;
 
 export function GET() {

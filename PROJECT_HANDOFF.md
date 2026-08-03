@@ -18,7 +18,8 @@ Open that folder in an editor or use it as the working directory for all command
 
 ## Public locations
 
-- Production app: <https://repo-rehearsal.aryangaur926.workers.dev>
+- Production app: <https://reporehersal.com>
+- Workers.dev fallback: <https://repo-rehearsal.aryangaur926.workers.dev>
 - GitHub repository: <https://github.com/agcodin/reporehearsal>
 - Cloudflare Worker name: `repo-rehearsal`
 - Cloudflare account subdomain: `aryangaur926.workers.dev`
@@ -180,4 +181,3 @@ The latest change (`89592b9`) did two things:
 Paste this document, then say:
 
 > We are continuing RepoRehearsal. Read `PROJECT_HANDOFF.md` in the repository first. Work only in `/Users/aryangaur/Documents/Codex/2026-07-15/files-mentioned-by-the-user-reporehearsal`. Preserve Cloudflare secrets, never expose API keys, and avoid staging the untracked duplicate files ending in ` 2`. Please inspect the current code and continue with: [describe the next task].
-
