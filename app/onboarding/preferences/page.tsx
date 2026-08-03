@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
-import { requireAuthenticatedUser } from "../../auth";
-import OnboardingProgress from "../OnboardingProgress";
+import { redirect } from "next/navigation";
 import { onboardingPath, onboardingSelection, type OnboardingQuery } from "../shared";
-import PreferencesStep from "./PreferencesStep";
 
-export const metadata: Metadata = { title: "Practice preferences" };
-
+/** Compatibility redirect for prior onboarding links. Preferences are no longer a signup step. */
 export default async function PreferencesPage({ searchParams }: { searchParams: Promise<OnboardingQuery> }) {
   const selection = onboardingSelection(await searchParams);
-  await requireAuthenticatedUser(onboardingPath("preferences", selection.plan, selection.billing));
-  return <main className="onboarding-page"><div className="onboarding-shell"><OnboardingProgress current={2} /><PreferencesStep plan={selection.plan} billing={selection.billing} /></div></main>;
+  redirect(onboardingPath("plan", selection.plan, selection.billing));
 }

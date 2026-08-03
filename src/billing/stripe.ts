@@ -6,6 +6,7 @@ import { isBillingCadence, isPlanId, planFor, type BillingCadence, type PlanId }
 type StripePlan = Exclude<PlanId, "FREE">;
 type SubscriptionStatus = "active" | "trialing" | "past_due" | "unpaid" | "canceled" | "incomplete" | "incomplete_expired" | "paused";
 type StripeEnvironment = typeof env & {
+  BETA_ALL_PLANS?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_PRO_WEEKLY?: string;
@@ -65,6 +66,7 @@ function secret(name: keyof StripeEnvironment): string {
 }
 
 function configured(): boolean { return Boolean(stripeEnv.STRIPE_SECRET_KEY?.trim()); }
+function betaEnabled(): boolean { return stripeEnv.BETA_ALL_PLANS === "true"; }
 
 function form(fields: Record<string, string | number | boolean | undefined>) {
   const body = new URLSearchParams();
@@ -111,9 +113,10 @@ async function customerFor(account: { id: string; email: string; displayName: st
 
 export async function billingSummary(user: AuthenticatedUser) {
   const account = await ensureAccount(user.email, user.displayName); await ensureBillingSchema();
+  if (betaEnabled()) return { configured: configured(), beta: true, plan: "TEAM" as PlanId, status: "beta", cancelAtPeriodEnd: false, currentPeriodEnd: null, customerId: null, subscriptionId: null };
   const row = await database().prepare("SELECT plan_id, status, cancel_at_period_end, current_period_end, stripe_customer_id, stripe_subscription_id FROM billing_subscriptions WHERE account_id = ?").bind(account.id).first<BillingRow>();
   const paid = row && (row.status === "active" || row.status === "trialing") ? row : null;
-  return { configured: configured(), plan: paid?.plan_id ?? "FREE" as PlanId, status: paid?.status ?? "free", cancelAtPeriodEnd: Boolean(paid?.cancel_at_period_end), currentPeriodEnd: paid?.current_period_end ?? null, customerId: paid?.stripe_customer_id ?? null, subscriptionId: paid?.stripe_subscription_id ?? null };
+  return { configured: configured(), beta: false, plan: paid?.plan_id ?? "FREE" as PlanId, status: paid?.status ?? "free", cancelAtPeriodEnd: Boolean(paid?.cancel_at_period_end), currentPeriodEnd: paid?.current_period_end ?? null, customerId: paid?.stripe_customer_id ?? null, subscriptionId: paid?.stripe_subscription_id ?? null };
 }
 
 /** Server-side subscription entitlement. Never trust a client-supplied plan header. */
@@ -125,6 +128,7 @@ export async function createCheckout(user: AuthenticatedUser, request: Request, 
   if (input.plan === "FREE") throw new BillingError("FREE_PLAN", "The Free plan does not need checkout.");
   if (!isPlanId(input.plan) || !isBillingCadence(input.cadence)) throw new BillingError("INVALID_PLAN", "Choose a supported plan and billing cadence.");
   const account = await ensureAccount(user.email, user.displayName); const current = await billingSummary(user);
+  if (current.beta) return { beta: true, portal: false, url: `${originFor(request)}/${input.plan === "TEAM" ? "team" : "dashboard"}` };
   if (current.plan !== "FREE") return { portal: true, url: await createPortal(user, request) };
   const customer = await customerFor(account); const origin = originFor(request); const price = priceId(input.plan, input.cadence);
   const session = await stripe<{ id: string; url: string }>("/checkout/sessions", {

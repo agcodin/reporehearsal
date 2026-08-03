@@ -1,4 +1,4 @@
-const steps = ["Account", "Preferences", "Plan", "Checkout"];
+const steps = ["Account", "Plan", "Checkout"];
 
 export default function OnboardingProgress({ current }: { current: number }) {
   return <nav className="onboarding-progress" aria-label="Onboarding progress">

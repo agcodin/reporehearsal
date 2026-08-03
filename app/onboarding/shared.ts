@@ -9,6 +9,6 @@ export function onboardingSelection(query: OnboardingQuery): { plan: PlanId; bil
   };
 }
 
-export function onboardingPath(step: "account" | "preferences" | "plan" | "checkout", plan: PlanId, billing: BillingCadence) {
+export function onboardingPath(step: "account" | "plan" | "checkout", plan: PlanId, billing: BillingCadence) {
   return `/onboarding/${step}?plan=${plan}&billing=${billing}`;
 }
