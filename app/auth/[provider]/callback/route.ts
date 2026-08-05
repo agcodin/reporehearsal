@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_SESSION_COOKIE, OAUTH_STATE_COOKIE } from "../../../auth";
+import { AUTH_SESSION_COOKIE, OAUTH_STATE_COOKIE, safeRelativeReturnPath } from "../../../auth";
 import { consumeLoginAttempt, createAuthSession } from "../../../../src/auth/auth-service";
 import { exchangeAuthorizationCode, isOAuthProvider, OAuthProviderError } from "../../../../src/auth/oauth-providers";
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const identity = await exchangeAuthorizationCode(provider, { origin: request.nextUrl.origin, code, codeVerifier: attempt.codeVerifier });
     const session = await createAuthSession({ provider, ...identity });
-    const response = NextResponse.redirect(new URL(attempt.returnTo, request.nextUrl.origin));
+    const response = NextResponse.redirect(new URL(safeRelativeReturnPath(attempt.returnTo), request.nextUrl.origin));
     clearStateCookie(response, request);
     response.cookies.set(AUTH_SESSION_COOKIE, session.token, {
       httpOnly: true,
