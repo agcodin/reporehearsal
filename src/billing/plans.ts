@@ -21,6 +21,12 @@ export type PlanLimits = {
   maxTextFileBytes: number;
 };
 
+export type PricePresentation = {
+  price: string;
+  cadence: string;
+  monthlyEquivalent?: string;
+};
+
 const MB = 1024 * 1024;
 
 export const plans: Plan[] = [
@@ -82,10 +88,14 @@ export function planFromRequest(request: Request) {
   return planFor(isPlanId(value) ? value : "FREE");
 }
 
-export function priceForCadence(plan: Plan, billing: BillingCadence) {
+export function priceForCadence(plan: Plan, billing: BillingCadence): PricePresentation {
   if (plan.id === "FREE") return { price: "$0", cadence: "forever" };
   if (billing === "weekly") return { price: plan.id === "PRO" ? "$2.99" : "$5.99", cadence: "per week" };
-  if (billing === "annual") return { price: `$${(Number(plan.price.slice(1)) * .8).toFixed(2)}`, cadence: "per month, billed annually" };
+  if (billing === "annual") {
+    return plan.id === "PRO"
+      ? { price: "$95.99", cadence: "billed annually", monthlyEquivalent: "$8.00/month equivalent" }
+      : { price: "$191.99", cadence: "billed annually", monthlyEquivalent: "$16.00/month equivalent" };
+  }
   return { price: plan.price, cadence: plan.cadence };
 }
 
@@ -93,8 +103,7 @@ export function chargeForCadence(plan: Plan, billing: BillingCadence) {
   if (plan.id === "FREE") return { amount: "$0.00", interval: "No recurring charge" };
   if (billing === "weekly") return { amount: plan.id === "PRO" ? "$2.99" : "$5.99", interval: "Billed weekly" };
   if (billing === "annual") {
-    const annualTotal = Number(plan.price.slice(1)) * .8 * 12;
-    return { amount: `$${annualTotal.toFixed(2)}`, interval: "Billed once per year" };
+    return { amount: plan.id === "PRO" ? "$95.99" : "$191.99", interval: "Billed once per year" };
   }
   return { amount: plan.price, interval: "Billed monthly" };
 }

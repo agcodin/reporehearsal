@@ -755,6 +755,7 @@ body>footer,footer:not(.sample-grid footer):not(.wizard-panel footer) { backgrou
 .onboarding-price { margin:26px 0 8px; display:grid; }
 .onboarding-price strong { font:400 39px/1 var(--font-display); }
 .onboarding-price small,.billing-clarity { margin-top:7px; color:#625f57; font-size:13px; }
+.plan-price span small,.onboarding-price .monthly-equivalent { display:block; margin-top:4px; font-size:11px; line-height:1.3; color:#77736a; }
 .billing-clarity { min-height:42px; }
 .onboarding-plan-card ul { margin:20px 0 0; padding:20px 0 0; display:grid; gap:9px; border-top:1px solid var(--deco-line-soft); list-style:none; font-size:13px; line-height:1.35; }
 .checkout-layout { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr); gap:20px; align-items:start; }

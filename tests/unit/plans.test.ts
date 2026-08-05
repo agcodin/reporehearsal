@@ -28,6 +28,9 @@ describe("plan catalog", () => {
     expect(isBillingCadence("daily")).toBe(false);
     expect(chargeForCadence(planFor("PRO"), "monthly")).toEqual({ amount: "$9.99", interval: "Billed monthly" });
     expect(chargeForCadence(planFor("TEAM"), "weekly")).toEqual({ amount: "$5.99", interval: "Billed weekly" });
-    expect(chargeForCadence(planFor("PRO"), "annual")).toEqual({ amount: "$95.90", interval: "Billed once per year" });
+    expect(priceForCadence(planFor("PRO"), "annual")).toEqual({ price: "$95.99", cadence: "billed annually", monthlyEquivalent: "$8.00/month equivalent" });
+    expect(priceForCadence(planFor("TEAM"), "annual")).toEqual({ price: "$191.99", cadence: "billed annually", monthlyEquivalent: "$16.00/month equivalent" });
+    expect(chargeForCadence(planFor("PRO"), "annual")).toEqual({ amount: "$95.99", interval: "Billed once per year" });
+    expect(chargeForCadence(planFor("TEAM"), "annual")).toEqual({ amount: "$191.99", interval: "Billed once per year" });
   });
 });
